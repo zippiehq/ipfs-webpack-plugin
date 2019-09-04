@@ -1,0 +1,23 @@
+{
+  "name": "ipfs-webpack-plugin",
+  "version": "1.0.0",
+  "description": "ipfs webpack plugin ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zippiehq/ipfs-webpack-plugin.git"
+  },
+  "author": "Zipie",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zippiehq/ipfs-webpack-plugin/issues"
+  },
+  "homepage": "https://github.com/zippiehq/ipfs-webpack-plugin#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
+    "ipfs-http-client": "^34.0.0"
+  }
+}
