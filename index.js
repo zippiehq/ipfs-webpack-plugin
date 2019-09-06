@@ -1,29 +1,25 @@
 const ipfsClient = require("ipfs-http-client");
 const fs = require("fs");
 const cheerio = require("cheerio");
+const webpack = require("webpack");
+
+const appDirectory = fs.realpathSync(process.cwd());
 
 class IpfsPlugin {
-  constructor(
-    host = "localhost",
-    port = "5002",
-    ipv4Route = "/ip4/127.0.0.1/tcp/4003/ws/ipfs/QmbJtUMhueXwmDZT45NJCdvHmuggMx7mZP4bWNrZVL8TSn"
-  ) {
+  constructor(host = "localhost", port = "5002") {
     this.ipfs = ipfsClient(host, port, { protocol: "http" });
-    this.ipv4Route = ipv4Route;
   }
 
-  getScriptAssetsDownloadScriptTag(jsRootHash, cssRootHash) {
-    const code = `<script>const ipfs = new window.Ipfs({
-      config: {
-        Bootstrap: [
-         "${this.ipv4Route}"
-        ]
-      }
+  getScriptAssetsDownloadScriptTag(jsRootHash, cssRootHash, $) {
+    const code = `
+    import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
+
+    window.ipfs = createProxyClient({
+      postMessage: window.postMessage.bind(window.parent)
     });
-    ipfs.on("ready", async () => {
-      await ipfs.get(
-        "${jsRootHash}",
-        (err, files) => {
+    window.ipfs.get(
+        "${jsRootHash}"
+      ).then((files, err) => {
           const jsFiles = files.filter(file => file.type !== "dir" && !file.path.includes("map"));
           jsFiles.map(jsFile => {
             const content = jsFile.content.toString("utf8");
@@ -32,26 +28,45 @@ class IpfsPlugin {
             myScript.innerHTML += content;
             document.body.appendChild(myScript);
           });
-        }
-      );
-      await ipfs.get(
-        "${cssRootHash}",
-        (err, files) => {
-          const jsFiles = files.filter(file => file.type !== "dir" && !file.path.includes("map"));
-          jsFiles.map(jsFile => {
+        })
+        window.ipfs.get(
+        "${cssRootHash}"
+        ).then((files, err) => {
+          const cssFiles = files.filter(file => file.type !== "dir" && !file.path.includes("map"));
+          cssFiles.map(jsFile => {
             const content = jsFile.content.toString("utf8");
             var styleTag = document.createElement("style");
             styleTag.setAttribute("type", "text/css");
             styleTag.innerHTML += content;
-            document.body.appendChild(styleTag);
+            document.head.appendChild(styleTag);
           });
         }
       );
-    });</script>`;
-    return code;
-  }
-  getIpfsScript() {
-    return '<script src="https://unpkg.com/ipfs/dist/index.js"></script> ';
+    `;
+    fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
+    const jsTempPath = `${appDirectory}/ipfsGetter.js`;
+    const options = {
+      mode: "production",
+      watch: false,
+      entry: jsTempPath,
+      output: {
+        path: appDirectory,
+        filename: "ipfsGetterBundle.js"
+      }
+    };
+    const compiler = webpack(options);
+    return new Promise((resolve, reject) => {
+      compiler.run((err, stats) => {
+        if (err || stats.hasErrors()) {
+          console.log(stats.toJson("minimal"));
+        }
+        const bundle = fs.readFileSync(`${appDirectory}/ipfsGetterBundle.js`);
+        $("body").append(`<script>${bundle}</script>`);
+        fs.unlinkSync(`${appDirectory}/ipfsGetterBundle.js`);
+        fs.unlinkSync(`${appDirectory}/ipfsGetter.js`);
+        resolve();
+      });
+    });
   }
   apply(compiler) {
     let publicPath = compiler.options.output.publicPath || "";
@@ -91,20 +106,24 @@ class IpfsPlugin {
               }
             };
           });
-          const html = fs.readFileSync("./build/index.html");
+          const html = fs.readFileSync(`${appDirectory}/build/index.html`);
           const $ = cheerio.load(html);
           const jsRootHash = filelist["build/static/js"].hash;
           const cssRootHash = filelist["build/static/css"].hash;
           $("link[rel=stylesheet]").remove();
           $("script[src*='/static/js']").remove();
 
-          $("head").append(this.getIpfsScript());
-          $("head").append(
-            this.getScriptAssetsDownloadScriptTag(jsRootHash, cssRootHash)
-          );
-
-          fs.writeFileSync("./build/index.html", $.html());
-          fs.writeFileSync(`./build/filelist.json`, JSON.stringify(filelist));
+          this.getScriptAssetsDownloadScriptTag(
+            jsRootHash,
+            cssRootHash,
+            $
+          ).then(() => {
+            fs.writeFileSync(`${appDirectory}/build/index.html`, $.html());
+            fs.writeFileSync(
+              `${appDirectory}/build/filelist.json`,
+              JSON.stringify(filelist)
+            );
+          });
         }
       );
 
