@@ -1,5 +1,5 @@
 {
-  "name": "ipfs-webpack-plugin",
+  "name": "@zippiehq/ipfs-webpack-plugin",
   "version": "1.0.0",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/zippiehq/ipfs-webpack-plugin.git"
   },
-  "author": "Zipie",
+  "author": "Zippie",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/zippiehq/ipfs-webpack-plugin/issues"
