@@ -14,9 +14,11 @@ class IpfsPlugin {
     const code = `
     import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
 
-    window.ipfs = createProxyClient({
-      postMessage: window.postMessage.bind(window.parent)
-    });
+    if (!window.ipfs) {
+      window.ipfs = createProxyClient({
+         postMessage: window.postMessage.bind(window.parent)
+      })
+    }
     window.ipfs.get(
         "${jsRootHash}"
       ).then((files, err) => {
