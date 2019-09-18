@@ -6,8 +6,9 @@ const webpack = require("webpack");
 const appDirectory = fs.realpathSync(process.cwd());
 
 class IpfsPlugin {
-  constructor(host = "localhost", port = "5002") {
+  constructor(host = "localhost", port = "5002", wrapper_list = ['index.html', 'manifest.json']) {
     this.ipfs = ipfsClient(host, port, { protocol: "http" });
+    this.wrapper_list = wrapper_list
   }
 
   getScriptAssetsDownloadScriptTag(jsRootHash, cssRootHash, $) {
@@ -82,16 +83,7 @@ class IpfsPlugin {
         "./build",
         {
           recursive: true,
-          ignore: [
-            "asset-manifest",
-            "index.html",
-            "service-worker.js",
-            "service-worker.js",
-            "favicon.ico",
-            "manifest.json",
-            "precache-*.js",
-            "robots.txt"
-          ],
+          ignore: this.wrapper_list,
           wrapWithDirectory: false
         },
         (err, result) => {
@@ -121,10 +113,32 @@ class IpfsPlugin {
             $
           ).then(() => {
             fs.writeFileSync(`${appDirectory}/build/index.html`, $.html());
-            fs.writeFileSync(
-              `${appDirectory}/build/filelist.json`,
-              JSON.stringify(filelist)
-            );
+            this.ipfs.addFromFs(
+              "./build",
+              {
+                recursive: true,
+                wrapWithDirectory: false
+              },
+              (err, result) => {
+                if (err) {
+                  throw err;
+                }
+                var filelist
+                result.map(file => {
+                  filelist = {
+                    ...filelist,
+                    [file.path]: {
+                      path: file.path,
+                      hash: file.hash,
+                      size: file.size
+                    }
+                  };
+                });
+                fs.writeFileSync(
+                  `${appDirectory}/build/filelist.json`,
+                  JSON.stringify(filelist)
+                );    
+              })
           });
         }
       );
