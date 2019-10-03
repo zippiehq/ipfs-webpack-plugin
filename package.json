@@ -19,7 +19,11 @@
   "dependencies": {
     "@zippie/ipfs-postmsg-proxy": "^3.1.3",
     "cheerio": "^1.0.0-rc.3",
+    "datastore-level": "^0.12.1",
+    "ipfs": "^0.38.0",
     "ipfs-http-client": "^34.0.0",
+    "ipfs-repo": "^0.28.0",
+    "level-mem": "^5.0.1",
     "webpack": "^4.39.3"
   }
 }

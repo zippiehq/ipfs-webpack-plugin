@@ -1,4 +1,4 @@
-const ipfsClient = require("ipfs-http-client");
+const IPFS = require('ipfs')
 const fs = require("fs");
 const cheerio = require("cheerio");
 const webpack = require("webpack");
@@ -6,9 +6,9 @@ const webpack = require("webpack");
 const appDirectory = fs.realpathSync(process.cwd());
 
 class IpfsPlugin {
-  constructor(host = "localhost", port = "5002", wrapper_list = ['index.html', 'manifest.json']) {
-    this.ipfs = ipfsClient(host, port, { protocol: "http" });
+  constructor(wrapper_list = ['index.html', 'manifest.json'], source_dir = 'build') {
     this.wrapper_list = wrapper_list
+    this.source_dir = source_dir
   }
 
   getScriptAssetsDownloadScriptTag(jsRootHash, cssRootHash, $) {
@@ -72,24 +72,24 @@ class IpfsPlugin {
     });
   }
   apply(compiler) {
+
     let publicPath = compiler.options.output.publicPath || "";
     if (publicPath && !publicPath.endsWith("/")) {
       publicPath += "/";
     }
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
       var filelist;
+     
+      IPFS.create({repo: '.ipfs-webpack-plugin', start: false}).then(async (ipfs) => {
+        this.ipfs = ipfs
+        var result = await this.ipfs.addFromFs(
+          this.source_dir,
+          {
+            recursive: true,
+            ignore: this.wrapper_list,
+            wrapWithDirectory: false
+          })
 
-      this.ipfs.addFromFs(
-        "./build",
-        {
-          recursive: true,
-          ignore: this.wrapper_list,
-          wrapWithDirectory: false
-        },
-        (err, result) => {
-          if (err) {
-            throw err;
-          }
           result.map(file => {
             filelist = {
               ...filelist,
@@ -100,50 +100,47 @@ class IpfsPlugin {
               }
             };
           });
-          const html = fs.readFileSync(`${appDirectory}/build/index.html`);
+
+          const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
           const $ = cheerio.load(html);
-          const jsRootHash = filelist["build/static/js"].hash;
-          const cssRootHash = filelist["build/static/css"].hash;
+          const jsRootHash = filelist[this.source_dir + '/static/js'].hash;
+          const cssRootHash = filelist[this.source_dir + '/static/css'].hash;
           $("link[rel=stylesheet]").remove();
           $("script[src*='/static/js']").remove();
 
-          this.getScriptAssetsDownloadScriptTag(
+          await this.getScriptAssetsDownloadScriptTag(
             jsRootHash,
             cssRootHash,
-            $
-          ).then(() => {
-            fs.writeFileSync(`${appDirectory}/build/index.html`, $.html());
-            this.ipfs.addFromFs(
-              "./build",
-              {
-                recursive: true,
-                wrapWithDirectory: false
-              },
-              (err, result) => {
-                if (err) {
-                  throw err;
-                }
-                var filelist
-                result.map(file => {
-                  filelist = {
-                    ...filelist,
-                    [file.path]: {
-                      path: file.path,
-                      hash: file.hash,
-                      size: file.size
-                    }
-                  };
-                });
-                fs.writeFileSync(
-                  `${appDirectory}/build/filelist.json`,
-                  JSON.stringify(filelist)
-                );    
-              })
-          });
-        }
-      );
+            $)
 
-      callback();
+          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
+          result = await this.ipfs.addFromFs(
+            this.source_dir,
+            {
+              recursive: true,
+              wrapWithDirectory: false
+            })
+            var filelist
+            result.map(file => {
+              filelist = {
+                ...filelist,
+                [file.path]: {
+                  path: file.path,
+                  hash: file.hash,
+                  size: file.size
+                }
+              };
+            });
+            fs.writeFileSync(
+              `${appDirectory}/build-ipfs-filelist.json`,
+              JSON.stringify(filelist)
+            );          
+            console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
+            callback();
+      }).catch((err) => {
+        console.log(err)
+      })
+//     })
     });
   }
 }
