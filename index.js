@@ -2,6 +2,8 @@ const IPFS = require('ipfs')
 const fs = require("fs");
 const cheerio = require("cheerio");
 const webpack = require("webpack");
+const fetch = require('node-fetch');
+const dotenv = require('dotenv')
 
 const appDirectory = fs.realpathSync(process.cwd());
 
@@ -136,6 +138,38 @@ class IpfsPlugin {
               JSON.stringify(filelist)
             );          
             console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
+            if (process.env.IPFS_WEBPACK_UPLOAD) {
+              console.log('Starting IPFS node up..')
+              await this.ipfs.start()
+              if (process.env.IPFS_WEBPACK_SWARM_CONNECT) {
+                console.log('IPFS - connecting to ' + process.env.IPFS_WEBPACK_SWARM_CONNECT)
+                await ipfs.swarm.connect(process.env.IPFS_WEBPACK_SWARM_CONNECT)
+              }
+              if (process.env.IPFS_WEBPACK_CIDHOOK_PINNER && process.env.IPFS_WEBPACK_CIDHOOK_SECRET) {
+
+                function waitTimeout(timeout) {
+                  return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                      resolve()
+                    }, timeout)
+                  })
+                }
+
+                console.log('Pinning ' + filelist[this.source_dir].hash + ' on ' + process.env.IPFS_WEBPACK_CIDHOOK_PINNER)
+                var options = {}
+                options['headers'] = { 'Authorization':  process.env.IPFS_WEBPACK_CIDHOOK_SECRET}
+                options['method'] = 'POST'
+                await fetch(process.env.IPFS_WEBPACK_CIDHOOK_PINNER + '/' + filelist[this.source_dir].hash, options)
+                if (process.env.IPFS_WEBPACK_CIDHOOK_WAIT) {
+                  var wait = parseInt(process.env.IPFS_WEBPACK_CIDHOOK_WAIT) * 1000
+                  console.log('Waiting ' + wait + 'ms for pin to finish')
+                  await waitTimeout(wait)
+                }
+                
+              }
+              console.log('Stopping IPFS node... ')
+              await this.ipfs.stop()
+            }
             callback();
       }).catch((err) => {
         console.log(err)
