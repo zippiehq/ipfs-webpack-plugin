@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 const webpack = require("webpack");
 const fetch = require('node-fetch');
 const dotenv = require('dotenv')
-
+const zutils = require('@zippie/zippie-utils')
 const appDirectory = fs.realpathSync(process.cwd());
 
 class IpfsPlugin {
@@ -165,7 +165,11 @@ class IpfsPlugin {
                   console.log('Waiting ' + wait + 'ms for pin to finish')
                   await waitTimeout(wait)
                 }
-                
+              }
+              if (process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
+                console.log('Appending CID to Zippie permastore2')
+                let result = await zutils.permastore.insert(filelist[this.source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
+                console.log('Available at ' + result.path.split('/')[0])
               }
               console.log('Stopping IPFS node... ')
               await this.ipfs.stop()
