@@ -167,8 +167,8 @@ class IpfsPlugin {
                 }
               }
               if (process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
-                console.log('Appending CID to Zippie permastore2')
-                let result = await zutils.permastore.insert(filelist[this.source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
+                console.log('Appending CID ' + filelist[this.source_dir].hash + ' to Zippie permastore2')
+                let result = await zutils.permastore.insertCID(filelist[this.source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
                 console.log('Available at ' + result.path.split('/')[0])
               }
               console.log('Stopping IPFS node... ')
