@@ -90,6 +90,32 @@ class IpfsPlugin {
           }
           scriptsEle.remove()
             $("body").prepend(`<script>window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `</script>`)
+            var cssEle = $("link[rel=stylesheet]");
+            var css = []
+            for (var i = 0; i < cssEle.length; i++) {
+              css.push(cssEle[i].attribs['href'])
+            } 
+            $("body").append(`<script>
+            var css = ` + JSON.stringify(css) + `;
+            
+            (async (css) => {
+              for (var i = 0; i < css.length; i++) {
+                 console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + window.ipfsWebpackFiles['build' + css[i]].hash)
+                 
+                 var content = await window.ipfs.cat(window.ipfsWebpackFiles['build' + css[i]].hash, {})
+                 console.log('[ipfs-webpack-plugin] downloaded ' + css[i])
+                 var linkTag = document.createElement('link');
+                 linkTag.type = "text/css";
+                 linkTag.rel = "stylesheet";
+                 linkTag.href = URL.createObjectURL(new Blob([content], {type: 'text/css'}))
+                 document.head.appendChild(linkTag);
+              }
+            })(css).then(() => {
+            }).catch((err) => {
+               console.log('failed to load css from ipfs')
+            })
+            </script>`);
+            cssEle.remove()
             
             $("body").append(`<script>
             var scripts = ` + JSON.stringify(scripts) + `;
@@ -108,6 +134,7 @@ class IpfsPlugin {
                console.log('failed to load scripts from ipfs')
             })
             </script>`);
+            
 
           await this.getScriptAssetsDownloadScriptTag($)
 
