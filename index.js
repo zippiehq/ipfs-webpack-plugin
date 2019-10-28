@@ -13,7 +13,7 @@ class IpfsPlugin {
     this.source_dir = source_dir
   }
 
-  getScriptAssetsDownloadScriptTag(jsRootHash, cssRootHash, $) {
+  getScriptAssetsDownloadScriptTag($) {
     const code = `
     import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
 
@@ -22,31 +22,6 @@ class IpfsPlugin {
          postMessage: window.postMessage.bind(window.parent)
       })
     }
-    window.ipfs.get(
-        "${jsRootHash}"
-      ).then((files, err) => {
-          const jsFiles = files.filter(file => file.type !== "dir" && !file.path.includes("map"));
-          jsFiles.map(jsFile => {
-            const content = jsFile.content.toString("utf8");
-            var myScript = document.createElement("script");
-            myScript.setAttribute("type", "text/javascript");
-            myScript.innerHTML += content;
-            document.body.appendChild(myScript);
-          });
-        })
-        window.ipfs.get(
-        "${cssRootHash}"
-        ).then((files, err) => {
-          const cssFiles = files.filter(file => file.type !== "dir" && !file.path.includes("map"));
-          cssFiles.map(jsFile => {
-            const content = jsFile.content.toString("utf8");
-            var styleTag = document.createElement("style");
-            styleTag.setAttribute("type", "text/css");
-            styleTag.innerHTML += content;
-            document.head.appendChild(styleTag);
-          });
-        }
-      );
     `;
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
     const jsTempPath = `${appDirectory}/ipfsGetter.js`;
@@ -66,7 +41,7 @@ class IpfsPlugin {
           console.log(stats.toJson("minimal"));
         }
         const bundle = fs.readFileSync(`${appDirectory}/ipfsGetterBundle.js`);
-        $("body").append(`<script>${bundle}</script>`);
+        $("body").prepend(`<script>${bundle}</script>`);
         fs.unlinkSync(`${appDirectory}/ipfsGetterBundle.js`);
         fs.unlinkSync(`${appDirectory}/ipfsGetter.js`);
         resolve();
@@ -104,16 +79,37 @@ class IpfsPlugin {
           });
 
           const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
-          const $ = cheerio.load(html);
-          const jsRootHash = filelist[this.source_dir + '/static/js'].hash;
-          const cssRootHash = filelist[this.source_dir + '/static/css'].hash;
-          $("link[rel=stylesheet]").remove();
-          $("script[src*='/static/js']").remove();
+          const $ = cheerio.load(html, {xmlMode: false});
+          const jsRootHash = filelist[this.source_dir].hash;
+          var scriptsEle = $("script[src*='/static/js']")
+          var scripts = []
+          console.log(scripts)
+          
+          for (var i = 0; i < scriptsEle.length; i++) {
+            scripts.push(scriptsEle[i].attribs['src'])
+          }
+          scriptsEle.remove()
+            $("body").prepend(`<script>window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `</script>`)
+            
+            $("body").append(`<script>
+            var scripts = ` + JSON.stringify(scripts) + `;
+            
+            (async (scripts) => {
+              for (var i = 0; i < scripts.length; i++) {
+                 console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + window.ipfsWebpackFiles['build' + scripts[i]].hash)
+                 
+                 var content = await window.ipfs.cat(window.ipfsWebpackFiles['build' + scripts[i]].hash, {})
+                 var newscript = document.createElement('script')
+                 newscript.src = URL.createObjectURL(new Blob([content], {type: 'text/javascript'}))
+                 document.body.appendChild(newscript)
+              }
+            })(scripts).then(() => {
+            }).catch((err) => {
+               console.log('failed to load scripts from ipfs')
+            })
+            </script>`);
 
-          await this.getScriptAssetsDownloadScriptTag(
-            jsRootHash,
-            cssRootHash,
-            $)
+          await this.getScriptAssetsDownloadScriptTag($)
 
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
           result = await this.ipfs.addFromFs(
@@ -178,7 +174,6 @@ class IpfsPlugin {
       }).catch((err) => {
         console.log(err)
       })
-//     })
     });
   }
 }
