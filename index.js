@@ -7,6 +7,8 @@ const dotenv = require('dotenv')
 const zutils = require('@zippie/zippie-utils')
 const appDirectory = fs.realpathSync(process.cwd());
 
+dotenv.config()
+
 class IpfsPlugin {
   constructor(wrapper_list = ['index.html', 'manifest.json'], source_dir = 'build') {
     this.wrapper_list = wrapper_list
@@ -100,19 +102,30 @@ class IpfsPlugin {
             
             (async (css) => {
               for (var i = 0; i < css.length; i++) {
-                 console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + window.ipfsWebpackFiles['build' + css[i]].hash)
+                 var hash = window.ipfsWebpackFiles['build' + css[i]].hash
+                 var brotli = false
+                 if (window.brotli_decompress && window.ipfsWebpackFiles['build' + css[i] + '.br']) {
+                    brotli = true
+                    hash = window.ipfsWebpackFiles['build' + css[i] + '.br'].hash
+                 }
+
+                 console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
-                 var content = await window.ipfs.cat(window.ipfsWebpackFiles['build' + css[i]].hash, {})
-                 console.log('[ipfs-webpack-plugin] downloaded ' + css[i])
+                 var content = await window.ipfs.cat(hash, {})
+                 if (brotli) {
+                    content = window.brotli_decompress(content)
+                 }
+
+                 console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
                  var linkTag = document.createElement('link');
-                 linkTag.type = "text/css";
+                 linkTag.type = 'text/css';
                  linkTag.rel = "stylesheet";
                  linkTag.href = URL.createObjectURL(new Blob([content], {type: 'text/css'}))
                  document.head.appendChild(linkTag);
               }
             })(css).then(() => {
             }).catch((err) => {
-               console.log('failed to load css from ipfs')
+               console.log('failed to load css from ipfs: ', err)
             })
             </script>`);
             cssEle.remove()
@@ -122,22 +135,35 @@ class IpfsPlugin {
             
             (async (scripts) => {
               for (var i = 0; i < scripts.length; i++) {
-                 console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + window.ipfsWebpackFiles['build' + scripts[i]].hash)
+                 var hash = window.ipfsWebpackFiles['build' + scripts[i]].hash
+                 var brotli = false
+                 if (window.brotli_decompress && window.ipfsWebpackFiles['build' + scripts[i] + '.br']) {
+                    brotli = true
+                    hash = window.ipfsWebpackFiles['build' + scripts[i] + '.br'].hash
+                 }
+
+                 console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
-                 var content = await window.ipfs.cat(window.ipfsWebpackFiles['build' + scripts[i]].hash, {})
+                 var content = await window.ipfs.cat(hash, {})
+                 if (brotli) {
+                    content = window.brotli_decompress(content)
+                 }
+
+                 console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
+
                  var newscript = document.createElement('script')
                  newscript.src = URL.createObjectURL(new Blob([content], {type: 'text/javascript'}))
                  document.body.appendChild(newscript)
               }
             })(scripts).then(() => {
             }).catch((err) => {
-               console.log('failed to load scripts from ipfs')
+               console.log('failed to load scripts from ipfs', err)
             })
             </script>`);
             
-
-          await this.getScriptAssetsDownloadScriptTag($)
-
+          if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
+            await this.getScriptAssetsDownloadScriptTag($)
+          }
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
           result = await this.ipfs.addFromFs(
             this.source_dir,

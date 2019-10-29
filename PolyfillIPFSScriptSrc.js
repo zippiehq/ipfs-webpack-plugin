@@ -22,12 +22,22 @@ module.exports = class PolyfillIPFSScriptSrc {
                     /script.onerror = script.onload = onScriptComplete/g,
                     `(function(element, src, onScriptComplete) {
                         if (window.ipfsWebpackFiles['build' + src]) {
-                          console.log('[chunk] ipfs loading ' + src + ' as hash ' + window.ipfsWebpackFiles['build' + src].hash)
+                          var hash = window.ipfsWebpackFiles['build' + src].hash
+                          var brotli = false
+                          if (window.brotli_decompress && window.ipfsWebpackFiles['build' + src + '.br']) {
+                            brotli = true
+                            hash = window.ipfsWebpackFiles['build' + src + '.br'].hash
+                          }
+                          console.log('[chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                           var newscript = element.cloneNode()
                           element.onerror = element.onload = null;
                           element.src = undefined
                           
-                          window.ipfs.cat(window.ipfsWebpackFiles['build' + src].hash, {}).then(function(result) {
+                          window.ipfs.cat(hash, {}).then(function(result) {
+                             console.log('[chunk[ ipfs loaded ' + hash + ' brotli: ' + brotli)
+                             if (brotli) {
+                                result = window.brotli_decompress(result)
+                             }
                              newscript.src = URL.createObjectURL(new Blob([result], {type: 'text/javascript'}))
                              document.head.appendChild(newscript);
                           })  
