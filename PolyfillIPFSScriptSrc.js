@@ -60,7 +60,46 @@ module.exports = class PolyfillIPFSScriptSrc {
             wrap(compilation.mainTemplate.hooks.jsonpScript)
             wrap(compilation.mainTemplate.hooks.linkPreload)
             wrap(compilation.mainTemplate.hooks.linkPrefetch)
+
+            const wrap2 = hook => {
+               hook.tap('PolyfillIPFSScriptSrc', (source, chunk, hash, moduleTemplate, dependencyTemplates) => {
+                  console.log('got into requireEnsure, before source:' + source)
+                  source = source.replace(
+                    /head.appendChild\(linkTag\)/g,
+                    `(function(head, linkTag, src) {
+                        if (window.ipfsWebpackFiles['build' + src]) {
+                          var hash = window.ipfsWebpackFiles['build' + src].hash
+                          var brotli = false
+                          if (window.brotli_decompress && window.ipfsWebpackFiles['build' + src + '.br']) {
+                            brotli = true
+                            hash = window.ipfsWebpackFiles['build' + src + '.br'].hash
+                          }
+                          console.log('[css-chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
+                          
+                          window.ipfs.cat(hash, {}).then(function(result) {
+                             console.log('[css-chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
+                             if (brotli) {
+                                result = window.brotli_decompress(result)
+                             }
+                             var newsrc = URL.createObjectURL(new Blob([result], {type: 'text/css'}))
+                             linkTag.href = newsrc
+                             console.log('[css-chunk[ loading ' + src + ' as blob ' + newsrc)
+                             head.appendChild(linkTag)
+                          })  
+                        } else {
+                          head.appendChild(linkTag);
+                        }
+                    })(head, linkTag, fullhref)`)
+                    
+                  console.log('after ' + source)
+                                      
+                  return source
+               })
+            }
+            wrap2(compilation.mainTemplate.hooks.requireEnsure)
           }
+          
+          
         )
       }
     )
