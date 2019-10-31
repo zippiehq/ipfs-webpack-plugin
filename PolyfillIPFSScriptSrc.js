@@ -34,11 +34,14 @@ module.exports = class PolyfillIPFSScriptSrc {
                           element.src = undefined
                           
                           window.ipfs.cat(hash, {}).then(function(result) {
-                             console.log('[chunk[ ipfs loaded ' + hash + ' brotli: ' + brotli)
+                             console.log('[chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
                              if (brotli) {
                                 result = window.brotli_decompress(result)
                              }
-                             newscript.src = URL.createObjectURL(new Blob([result], {type: 'text/javascript'}))
+                             var newsrc = URL.createObjectURL(new Blob([result], {type: 'text/javascript'}))
+                             newscript.onerror = newscript.onload = onScriptComplete
+                             newscript.src = newsrc
+                             console.log('[chunk[ loading ' + src + ' as blob ' + newsrc)
                              document.head.appendChild(newscript);
                           })  
                         } else {
