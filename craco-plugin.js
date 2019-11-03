@@ -13,7 +13,8 @@ module.exports = {
           limit: 99999999999999999999,
         }
       })
-    }
+      return cracoConfig
+    },
     overrideWebpackConfig: ({ webpackConfig, cracoConfig, pluginOptions, context: { env, paths } }) => {
       webpackConfig.plugins.unshift(new PolyfillIPFSScriptSrc())
       webpackConfig.plugins.push(new IpfsWebpackPlugin())
