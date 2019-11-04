@@ -215,10 +215,11 @@ class IpfsPlugin {
                   await waitTimeout(wait)
                 }
               }
+              console.log('Available at https://klaatu.dev.zippie.org/#dev-url=/ipfs/' + filelist[this.source_dir].hash)
               if (process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
                 console.log('Appending CID ' + filelist[this.source_dir].hash + ' to Zippie permastore2')
                 let result = await zutils.permastore.insertCID(filelist[this.source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
-                console.log('Available at ' + result.path.split('/')[0])
+                console.log('Available at https://klaatu.dev.zippie.org/#dev-url=/permastore2/' + result.path.split('/')[0])
               }
               console.log('Stopping IPFS node... ')
               await this.ipfs.stop()
