@@ -1,6 +1,6 @@
 {
   "name": "@zippie/ipfs-webpack-plugin",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "craco-base64-inline-loader": "^1.0.0",
     "datastore-level": "^0.12.1",
     "dotenv": "^8.1.0",
-    "ipfs": "^0.38.0",
+    "ipfs": "^0.39.0",
     "level-mem": "^5.0.1",
     "node-fetch": "^2.6.0",
     "webpack": "^4.39.3"
