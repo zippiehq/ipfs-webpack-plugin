@@ -1,6 +1,6 @@
 {
   "name": "@zippie/ipfs-webpack-plugin",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
   "scripts": {
