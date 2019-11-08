@@ -156,15 +156,7 @@ class IpfsPlugin {
                  }
 
                  console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
-
-                 var newscript = document.createElement('script')
-                 var blob = new Blob([content], {type: 'text/javascript'})
-                 let reader = new FileReader()
-                 reader.readAsDataURL(blob)
-                 reader.onload = function() {
-                    newscript.src = reader.result
-                    document.body.appendChild(newscript)
-                  }
+                 newscript.text = content.toString('utf8')
               }
             })(scripts).then(() => {
             }).catch((err) => {

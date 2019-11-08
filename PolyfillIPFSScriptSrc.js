@@ -38,15 +38,10 @@ module.exports = class PolyfillIPFSScriptSrc {
                              if (brotli) {
                                 result = window.brotli_decompress(result)
                              }
-                             var blob = new Blob([result], {type: 'text/javascript'})
+                             newscript.text = result.toString('utf8')
                              newscript.onerror = newscript.onload = onScriptComplete
-                             let reader = new FileReader()
-                             reader.readAsDataURL(blob)
-                             reader.onload = function() {
-                               newscript.src = reader.result
-                               console.log('[chunk[ loading ' + src + ' as uri ' + reader.result)
-                               document.head.appendChild(newscript);
-                             }
+                             console.log('[chunk[ loading ' + src + ' as text')
+                             document.head.appendChild(newscript);
                           })  
                         } else {
                           element.onerror = element.onload = onScriptComplete
@@ -90,10 +85,9 @@ module.exports = class PolyfillIPFSScriptSrc {
                              reader.readAsDataURL(blob)
                              reader.onload = function() {
                                linkTag.href = reader.result
-                               console.log('[css-chunk[ loading ' + src + ' as blob ' + newsrc)
+                               console.log('[css-chunk[ loading ' + src + ' as data uri')
                                head.appendChild(linkTag)
                              }
-
                           })  
                         } else {
                           head.appendChild(linkTag);
