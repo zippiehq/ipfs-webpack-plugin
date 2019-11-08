@@ -38,11 +38,15 @@ module.exports = class PolyfillIPFSScriptSrc {
                              if (brotli) {
                                 result = window.brotli_decompress(result)
                              }
-                             var newsrc = URL.createObjectURL(new Blob([result], {type: 'text/javascript'}))
+                             var blob = new Blob([result], {type: 'text/javascript'})
                              newscript.onerror = newscript.onload = onScriptComplete
-                             newscript.src = newsrc
-                             console.log('[chunk[ loading ' + src + ' as blob ' + newsrc)
-                             document.head.appendChild(newscript);
+                             let reader = new FileReader()
+                             reader.readAsDataURL(blob)
+                             reader.onload = function() {
+                               newscript.src = reader.result
+                               console.log('[chunk[ loading ' + src + ' as uri ' + reader.result)
+                               document.head.appendChild(newscript);
+                             }
                           })  
                         } else {
                           element.onerror = element.onload = onScriptComplete
@@ -81,10 +85,15 @@ module.exports = class PolyfillIPFSScriptSrc {
                              if (brotli) {
                                 result = window.brotli_decompress(result)
                              }
-                             var newsrc = URL.createObjectURL(new Blob([result], {type: 'text/css'}))
-                             linkTag.href = newsrc
-                             console.log('[css-chunk[ loading ' + src + ' as blob ' + newsrc)
-                             head.appendChild(linkTag)
+                             var blob = new Blob([result], {type: 'text/css'})
+                             let reader = new FileReader()
+                             reader.readAsDataURL(blob)
+                             reader.onload = function() {
+                               linkTag.href = reader.result
+                               console.log('[css-chunk[ loading ' + src + ' as blob ' + newsrc)
+                               head.appendChild(linkTag)
+                             }
+
                           })  
                         } else {
                           head.appendChild(linkTag);

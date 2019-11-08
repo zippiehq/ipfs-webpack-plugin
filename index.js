@@ -119,9 +119,15 @@ class IpfsPlugin {
                  console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
                  var linkTag = document.createElement('link');
                  linkTag.type = 'text/css';
-                 linkTag.rel = "stylesheet";
-                 linkTag.href = URL.createObjectURL(new Blob([content], {type: 'text/css'}))
-                 document.head.appendChild(linkTag);
+                 linkTag.rel = 'stylesheet';
+
+                 var blob = new Blob([content], {type: 'text/css'})
+                 let reader = new FileReader()
+                 reader.readAsDataURL(blob)
+                 reader.onload = function() {
+                    linkTag.href = reader.result
+                    document.head.appendChild(linkTag);
+                 }
               }
             })(css).then(() => {
             }).catch((err) => {
@@ -152,8 +158,13 @@ class IpfsPlugin {
                  console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
 
                  var newscript = document.createElement('script')
-                 newscript.src = URL.createObjectURL(new Blob([content], {type: 'text/javascript'}))
-                 document.body.appendChild(newscript)
+                 var blob = new Blob([content], {type: 'text/javascript'})
+                 let reader = new FileReader()
+                 reader.readAsDataURL(blob)
+                 reader.onload = function() {
+                    newscript.src = reader.result
+                    document.body.appendChild(newscript)
+                  }
               }
             })(scripts).then(() => {
             }).catch((err) => {
