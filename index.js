@@ -120,14 +120,8 @@ class IpfsPlugin {
                  var linkTag = document.createElement('link');
                  linkTag.type = 'text/css';
                  linkTag.rel = 'stylesheet';
-
-                 var blob = new Blob([content], {type: 'text/css'})
-                 let reader = new FileReader()
-                 reader.readAsDataURL(blob)
-                 reader.onload = function() {
-                    linkTag.href = reader.result
-                    document.head.appendChild(linkTag);
-                 }
+                 linkTag.href = 'data:text/css;base64,' + content.toString('base64')
+                 document.head.appendChild(linkTag);
               }
             })(css).then(() => {
             }).catch((err) => {

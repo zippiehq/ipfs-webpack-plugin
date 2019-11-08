@@ -80,14 +80,9 @@ module.exports = class PolyfillIPFSScriptSrc {
                              if (brotli) {
                                 result = window.brotli_decompress(result)
                              }
-                             var blob = new Blob([result], {type: 'text/css'})
-                             let reader = new FileReader()
-                             reader.readAsDataURL(blob)
-                             reader.onload = function() {
-                               linkTag.href = reader.result
-                               console.log('[css-chunk[ loading ' + src + ' as data uri')
-                               head.appendChild(linkTag)
-                             }
+                             linkTag.href = 'data:text/css;base64,' + result.toString('base64')
+                             console.log('[css-chunk[ loading ' + src + ' as data uri')
+                             head.appendChild(linkTag)
                           })  
                         } else {
                           head.appendChild(linkTag);
