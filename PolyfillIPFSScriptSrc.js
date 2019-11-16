@@ -31,19 +31,21 @@ module.exports = class PolyfillIPFSScriptSrc {
                           console.log('[chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                           var newscript = element.cloneNode()
                           element.onerror = element.onload = null;
-                          element.src = undefined
+                          element.removeAttribute('src')
                           
                           window.ipfs.cat(hash, {}).then(function(result) {
                              console.log('[chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
                              if (brotli) {
                                 result = window.brotli_decompress(result)
                              }
+                             newscript.removeAttribute('src')
                              newscript.text = result.toString('utf8')
                              newscript.onerror = newscript.onload = onScriptComplete
                              console.log('[chunk[ loading ' + src + ' as text')
                              document.head.appendChild(newscript);
                           })  
                         } else {
+                          console.log('not using the usual path.. ')
                           element.onerror = element.onload = onScriptComplete
                         }
 
