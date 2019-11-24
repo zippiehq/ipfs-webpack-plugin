@@ -5,14 +5,6 @@ const IpfsWebpackPlugin = require('./index.js')
 
 module.exports = {
     overrideCracoConfig: ({ cracoConfig, pluginOptions, context: { env, paths } }) => { 
-      cracoConfig.plugins.push(
-      { 
-        plugin: base64Loader,
-        options: {
-          test: /\.(ttf|eot|otf|svg|woff(2)?)$/i,
-          limit: 99999999999999999999,
-        }
-      })
       return cracoConfig
     },
     overrideWebpackConfig: ({ webpackConfig, cracoConfig, pluginOptions, context: { env, paths } }) => {
