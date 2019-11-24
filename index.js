@@ -224,7 +224,7 @@ class IpfsPlugin {
               };
             });
             fs.writeFileSync(
-              `${appDirectory}/` + this._ipfs_filelist,
+              `${appDirectory}/` + this.ipfs_filelist,
               JSON.stringify(filelist)
             );          
             console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
