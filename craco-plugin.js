@@ -2,6 +2,7 @@
 const { loaderByName, addBeforeLoader } = require('@craco/craco')
 const PolyfillIPFSScriptSrc = require('./PolyfillIPFSScriptSrc.js')
 const IpfsWebpackPlugin = require('./index.js')
+const base64Loader = require('base64-inline-loader')
 
 module.exports = {
     overrideCracoConfig: ({ cracoConfig, pluginOptions, context: { env, paths } }) => { 
