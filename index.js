@@ -36,20 +36,26 @@ const IPFS = require('ipfs')
 const fs = require("fs");
 const cheerio = require("cheerio");
 const webpack = require("webpack");
-const fetch = require('node-fetch');
 const dotenv = require('dotenv')
-const zutils = require('@zippie/zippie-utils')
+const fetch = require('node-fetch');
 const appDirectory = fs.realpathSync(process.cwd());
 
 dotenv.config()
 
+const _source_dir = process.env.IPFS_WEBPACK_SOURCE_DIR ? process.env.IPFS_WEBPACK_SOURCE_DIR : 'build'
+const _ipfs_repo = process.env.IPFS_WEBPACK_REPO ? process.env.IPFS_WEBPACK_SOURCE_DIR : '.ipfs-webpack-plugin'
+const _ipfs_filelist = process.env.IPFS_WEBPACK_FILELIST ? process.env.IPFS_WEBPACK_FILELIST : 'build-ipfs-filelist.json'
+
 class IpfsPlugin {
-  constructor(wrapper_list = ['index.html', 'manifest.json'], source_dir = 'build') {
+  constructor(wrapper_list = ['index.html', 'manifest.json'], source_dir = _source_dir) {
+
     this.wrapper_list = wrapper_list
     this.source_dir = source_dir
+    this.ipfs_repo = _ipfs_repo
+    this.ipfs_filelist = _ipfs_filelist
   }
 
-  getScriptAssetsDownloadScriptTag($) {
+  getGetter($) {
     const code = `
     import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
 
@@ -93,7 +99,7 @@ class IpfsPlugin {
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
       var filelist;
      
-      IPFS.create({repo: '.ipfs-webpack-plugin', start: false}).then(async (ipfs) => {
+      IPFS.create({repo: this.ipfs_repo, start: false}).then(async (ipfs) => {
         this.ipfs = ipfs
         var result = await this.ipfs.addFromFs(
           this.source_dir,
@@ -117,15 +123,17 @@ class IpfsPlugin {
           const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
           const $ = cheerio.load(html, {xmlMode: false});
           const jsRootHash = filelist[this.source_dir].hash;
-          var scriptsEle = $("script[src*='/static/js']")
+          var scriptsEle = $("script[src^='/']")
           var scripts = []
-          console.log(scripts)
           
           for (var i = 0; i < scriptsEle.length; i++) {
             scripts.push(scriptsEle[i].attribs['src'])
           }
           scriptsEle.remove()
-            $("body").prepend(`<script>window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `</script>`)
+            $("body").prepend(`<script>
+            window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `;
+            window.ipfsWebpackSourceDir = ` + JSON.stringify(this.source_dir) + `;
+            </script>`)
             var cssEle = $("link[rel=stylesheet]");
             var css = []
             for (var i = 0; i < cssEle.length; i++) {
@@ -136,11 +144,11 @@ class IpfsPlugin {
             
             (async (css) => {
               for (var i = 0; i < css.length; i++) {
-                 var hash = window.ipfsWebpackFiles['build' + css[i]].hash
+                 var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
                  var brotli = false
-                 if (window.brotli_decompress && window.ipfsWebpackFiles['build' + css[i] + '.br']) {
+                 if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br']) {
                     brotli = true
-                    hash = window.ipfsWebpackFiles['build' + css[i] + '.br'].hash
+                    hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
                  }
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
@@ -169,11 +177,11 @@ class IpfsPlugin {
             
             (async (scripts) => {
               for (var i = 0; i < scripts.length; i++) {
-                 var hash = window.ipfsWebpackFiles['build' + scripts[i]].hash
+                 var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
                  var brotli = false
-                 if (window.brotli_decompress && window.ipfsWebpackFiles['build' + scripts[i] + '.br']) {
+                 if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br']) {
                     brotli = true
-                    hash = window.ipfsWebpackFiles['build' + scripts[i] + '.br'].hash
+                    hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br'].hash
                  }
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
@@ -195,7 +203,7 @@ class IpfsPlugin {
             </script>`);
             
           if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
-            await this.getScriptAssetsDownloadScriptTag($)
+            await this.getGetter($)
           }
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
           result = await this.ipfs.addFromFs(
@@ -216,45 +224,10 @@ class IpfsPlugin {
               };
             });
             fs.writeFileSync(
-              `${appDirectory}/build-ipfs-filelist.json`,
+              `${appDirectory}/` + this._ipfs_filelist,
               JSON.stringify(filelist)
             );          
             console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
-            if (process.env.IPFS_WEBPACK_UPLOAD) {
-              console.log('Starting IPFS node up..')
-              await this.ipfs.start()
-              if (process.env.IPFS_WEBPACK_SWARM_CONNECT) {
-                console.log('IPFS - connecting to ' + process.env.IPFS_WEBPACK_SWARM_CONNECT)
-                await ipfs.swarm.connect(process.env.IPFS_WEBPACK_SWARM_CONNECT)
-              }
-              if (process.env.IPFS_WEBPACK_CIDHOOK_PINNER && process.env.IPFS_WEBPACK_CIDHOOK_SECRET) {
-
-                function waitTimeout(timeout) {
-                  return new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                      resolve()
-                    }, timeout)
-                  })
-                }
-
-                console.log('Pinning ' + filelist[this.source_dir].hash + ' on ' + process.env.IPFS_WEBPACK_CIDHOOK_PINNER)
-                var options = {}
-                options['headers'] = { 'Authorization':  process.env.IPFS_WEBPACK_CIDHOOK_SECRET}
-                options['method'] = 'POST'
-                await fetch(process.env.IPFS_WEBPACK_CIDHOOK_PINNER + '/' + filelist[this.source_dir].hash, options)
-                if (process.env.IPFS_WEBPACK_CIDHOOK_WAIT) {
-                  var wait = parseInt(process.env.IPFS_WEBPACK_CIDHOOK_WAIT) * 1000
-                  console.log('Waiting ' + wait + 'ms for pin to finish')
-                  await waitTimeout(wait)
-                }
-              }
-              if (process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
-                console.log('Appending CID ' + filelist[this.source_dir].hash + ' to Zippie permastore2')
-                let result = await zutils.permastore.insertCID(filelist[this.source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
-              }
-              console.log('Stopping IPFS node... ')
-              await this.ipfs.stop()
-            }
             callback();
       }).catch((err) => {
         console.log(err)

@@ -1,6 +1,6 @@
 {
   "name": "@zippie/ipfs-webpack-plugin",
-  "version": "1.0.22",
+  "version": "1.1.0",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,9 @@
   },
   "author": "Zippie",
   "license": "ISC",
+  "bin": {
+    "ipfs-webpack-plugin-upload": "ipfs-webpack-plugin-upload.js"
+  },
   "bugs": {
     "url": "https://github.com/zippiehq/ipfs-webpack-plugin/issues"
   },
