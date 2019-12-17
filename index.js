@@ -68,7 +68,7 @@ class IpfsPlugin {
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
     const jsTempPath = `${appDirectory}/ipfsGetter.js`;
     const options = {
-      mode: "production",
+      mode: "development",
       watch: false,
       entry: jsTempPath,
       output: {
