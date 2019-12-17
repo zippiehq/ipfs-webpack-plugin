@@ -61,7 +61,9 @@ class IpfsPlugin {
 
     if (!window.ipfs) {
       window.ipfs = createProxyClient({
-         postMessage: window.postMessage.bind(window.parent)
+         postMessage: function(message, origin) {
+            return window.parent.postMessage(message.origin)
+         }
       })
     }
     `;
