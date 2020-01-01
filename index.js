@@ -56,7 +56,67 @@ class IpfsPlugin {
   }
 
   getGetter($) {
-    const code = `
+    let code
+    let fastpeer = process.env.IPFS_WEBPACK_JSIPFS_FASTPEER ? 'https://de-ipfsfp.dev.zippie.org' : process.env.IPFS_WEBPACK_FASTPEER
+    if (process.env.IPFS_WEBPACK_JSIPFS_GETTER) {
+      code = `
+      import * as IPFS from 'ipfs';
+      import * as multihash from 'multihashes'
+      import * as multihashing from 'multihashing-async'
+      import * as Block from 'ipfs-block'
+  
+      var bootstrap = ["/dns4/ipfstest.zippie.org/tcp/443/wss/ipfs/QmSjrxBW9vwj4Cm1LyodeqzUGkCvZXQjREY7zogWXxE6ne"]
+      window.ipfs = new IPFS({config: {Bootstrap: bootstrap}, preload: {enabled: false } })
+      window.ipfs_fastpeer = '${fastpeer}'
+      class FastPeer {
+      constructor(realbitswap) {
+      this._realbitswap = realbitswap
+    }
+    async get(cid) {
+      let has_cid_locally = await this._realbitswap.blockstore.has(cid)
+  
+      if (!has_cid_locally) {
+        try {
+          let res = await fetch(window.ipfs_fastpeer + '/api/v0/block/get/' + cid.toString(), {cache: 'force-cache'})
+          if (res.status === 200) {
+            let buf = Buffer.from(await res.arrayBuffer())
+            let m = multihash.decode(cid.multihash)
+            if (cid.multihash.equals(await multihashing(buf, m.code))) {
+              console.log('fetched ' + cid.toString())
+              return new Block(buf, cid)
+            }
+            console.info('data mismatch from fast peer')
+          }
+        } catch (err) {
+          console.log('something broke: ' + err)
+        }
+      }
+      return this._realbitswap.get(cid)
+    }
+  
+    async getMany(cids) {
+      console.log('getMany ' + cids)
+  
+      return this._realbitswap.getMany(cids)
+    }
+  
+    async put(block) {
+      console.log('put ' + block)
+      return this._realbitswap.put(block)
+    }
+  
+    async putMany(blocks) {
+      console.log('putMany ' + blocks)
+      return this._realbitswap.putMany(blocks)
+    }
+  }
+      window.ipfs.on('ready', async () => {
+         window.ipfs._blockService.setExchange(new FastPeer(window.ipfs._blockService._bitswap))
+         console.log('set exchange sorted out')
+      })`
+
+    } else {
+      code = `
     import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
 
     if (!window.ipfs) {
@@ -66,11 +126,12 @@ class IpfsPlugin {
          }
       })
     }
-    `;
+    `    
+    }
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
     const jsTempPath = `${appDirectory}/ipfsGetter.js`;
     const options = {
-      mode: "development",
+      mode: "production",
       watch: false,
       entry: jsTempPath,
       output: {
@@ -145,6 +206,7 @@ class IpfsPlugin {
             var css = ` + JSON.stringify(css) + `;
             
             (async (css) => {
+              await window.ipfs.ready
               for (var i = 0; i < css.length; i++) {
                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
                  var brotli = false
@@ -178,6 +240,7 @@ class IpfsPlugin {
             var scripts = ` + JSON.stringify(scripts) + `;
             
             (async (scripts) => {
+              await window.ipfs.ready
               for (var i = 0; i < scripts.length; i++) {
                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
                  var brotli = false
