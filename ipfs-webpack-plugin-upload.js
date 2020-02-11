@@ -19,8 +19,10 @@ async function run() {
     console.log('IPFS CID: ' + filelist[source_dir].hash)
 
     if (process.env.IPFS_WEBPACK_UPLOAD) {
-      console.log('Starting IPFS node up..')
-      await ipfs.start()
+      if (process.env.IPFS_WEBPACK_ONLINE) {
+        console.log('Starting IPFS node up..')
+        await ipfs.start()
+      }
       if (process.env.IPFS_WEBPACK_SWARM_CONNECT) {
         console.log('IPFS - connecting to ' + process.env.IPFS_WEBPACK_SWARM_CONNECT)
         await ipfs.swarm.connect(process.env.IPFS_WEBPACK_SWARM_CONNECT)
@@ -53,7 +55,7 @@ async function run() {
       if (process.env.IPFS_BLOCK_PINNER_ADDRESS) {
         const refs = []
         refs.push({ ref: filelist[source_dir].hash })
-        refs.push(...await ipfs.refs(filelist[source_dir].hash, { recursive: true, unique: true, maxDepth: -1 }))
+        refs.push(...await ipfs.refs(filelist[source_dir].hash, { recursive: true, unique: true }))
 
         for (k in refs) {
           const { ref } = refs[k]
@@ -65,11 +67,13 @@ async function run() {
           data.append('block', block.data, ref)
 
           const resp = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_block', data, { headers: data.getHeaders() })
-          console.info(resp)
+          console.info(resp.status)
         }
       }
-      console.log('Stopping IPFS node... ')
-      await ipfs.stop()
+      if (process.env.IPFS_WEBPACK_ONLINE) {
+        console.log('Stopping IPFS node... ')
+        await ipfs.stop()
+      }
     }
   })
 }
