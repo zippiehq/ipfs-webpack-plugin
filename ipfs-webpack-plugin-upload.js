@@ -19,8 +19,10 @@ async function run() {
     console.log('IPFS CID: ' + filelist[source_dir].hash)
 
     if (process.env.IPFS_WEBPACK_UPLOAD) {
-      console.log('Starting IPFS node up..')
-      await ipfs.start()
+      if (process.env.IPFS_WEBPACK_ONLINE) {
+        console.log('Starting IPFS node up..')
+        await ipfs.start()
+      }
       if (process.env.IPFS_WEBPACK_SWARM_CONNECT) {
         console.log('IPFS - connecting to ' + process.env.IPFS_WEBPACK_SWARM_CONNECT)
         await ipfs.swarm.connect(process.env.IPFS_WEBPACK_SWARM_CONNECT)
@@ -68,8 +70,10 @@ async function run() {
           console.info(resp.status)
         }
       }
-      console.log('Stopping IPFS node... ')
-      await ipfs.stop()
+      if (process.env.IPFS_WEBPACK_ONLINE) {
+        console.log('Stopping IPFS node... ')
+        await ipfs.stop()
+      }
     }
   })
 }
