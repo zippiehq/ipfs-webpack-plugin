@@ -1,8 +1,12 @@
 #!/usr/bin/env node
+const axios = require('axios')
 const IPFS = require('ipfs')
 const dotenv = require('dotenv')
 const zutils = require('@zippie/zippie-utils')
 const fs = require('fs')
+
+const FormData = require('form-data');
+
 dotenv.config()
 
 const source_dir = process.env.IPFS_WEBPACK_SOURCE_DIR ? process.env.IPFS_WEBPACK_SOURCE_DIR : 'build'
@@ -13,6 +17,7 @@ async function run() {
   IPFS.create({ repo: ipfs_repo, start: false }).then(async (ipfs) => {
     const filelist = JSON.parse(fs.readFileSync(ipfs_filelist))
     console.log('IPFS CID: ' + filelist[source_dir].hash)
+
     if (process.env.IPFS_WEBPACK_UPLOAD) {
       console.log('Starting IPFS node up..')
       await ipfs.start()
@@ -43,6 +48,25 @@ async function run() {
       if (process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
         console.log('Appending CID ' + filelist[source_dir].hash + ' to Zippie permastore2')
         let result = await zutils.permastore.insertCID(filelist[source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
+      }
+
+      if (process.env.IPFS_BLOCK_PINNER_ADDRESS) {
+        const refs = []
+        refs.push({ ref: filelist[source_dir].hash })
+        refs.push(...await ipfs.refs(filelist[source_dir].hash, { recursive: true, unique: true, maxDepth: -1 }))
+
+        for (k in refs) {
+          const { ref } = refs[k]
+          console.info('Pinning:', ref)
+          const block = await ipfs.block.get(ref)
+
+          const data = new FormData()
+          data.append('cid', ref)
+          data.append('block', block.data, ref)
+
+          const resp = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_block', data, { headers: data.getHeaders() })
+          console.info(resp)
+        }
       }
       console.log('Stopping IPFS node... ')
       await ipfs.stop()
