@@ -53,7 +53,6 @@ async function run() {
       }
 
       if (process.env.IPFS_BLOCK_PINNER_ADDRESS) {
-        const data = new FormData()
         const refs = []
 
         refs.push({ ref: filelist[source_dir].hash })
@@ -66,15 +65,20 @@ async function run() {
         const resp1 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/check_blocks', cids)
         console.info(resp1.data.unpinned)
 
-        for (let i = 0; i < resp1.data.unpinned.length; i++) {
-          const ref = resp1.data.unpinned[i]
-          const block = await ipfs.block.get(ref)
+        for (let i = 0; i < resp1.data.unpinned.length; i += 64) {
+          const data = new FormData()
+          const chunks = resp1.data.unpinned.slice(i, i+64)
 
-          data.append('block', block.data, { filename: ref })
+          for (let j = 0; j < chunks.length; j++) {
+            const ref = chunks[j]
+            const block = await ipfs.block.get(ref)
+
+            data.append('block', block.data, { filename: ref })
+          }
+
+          const resp2 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_blocks', data, { headers: data.getHeaders() })
+          console.info(resp2.status)
         }
-
-        const resp2 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_blocks', data, { headers: data.getHeaders() })
-        console.info(resp2.status)
       }
 
       if (process.env.IPFS_WEBPACK_ONLINE) {
@@ -84,8 +88,6 @@ async function run() {
     }
   })
 }
-
-
 
 run().then(() => {}).catch((err) => {
   throw err
