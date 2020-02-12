@@ -53,23 +53,30 @@ async function run() {
       }
 
       if (process.env.IPFS_BLOCK_PINNER_ADDRESS) {
+        const data = new FormData()
         const refs = []
+
         refs.push({ ref: filelist[source_dir].hash })
         refs.push(...await ipfs.refs(filelist[source_dir].hash, { recursive: true, unique: true }))
 
+        const cids = []
         for (k in refs) {
-          const { ref } = refs[k]
-          console.info('Pinning:', ref)
+          cids.push(refs[k].ref)
+        }
+        const resp1 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/check_blocks', cids)
+        console.info(resp1.data.unpinned)
+
+        for (let i = 0; i < resp1.data.unpinned.length; i++) {
+          const ref = resp1.data.unpinned[i]
           const block = await ipfs.block.get(ref)
 
-          const data = new FormData()
-          data.append('cid', ref)
-          data.append('block', block.data, ref)
-
-          const resp = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_block', data, { headers: data.getHeaders() })
-          console.info(resp.status)
+          data.append('block', block.data, { filename: ref })
         }
+
+        const resp2 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_blocks', data, { headers: data.getHeaders() })
+        console.info(resp2.status)
       }
+
       if (process.env.IPFS_WEBPACK_ONLINE) {
         console.log('Stopping IPFS node... ')
         await ipfs.stop()
