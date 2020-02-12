@@ -14,10 +14,12 @@ Variables through `dotenv`
  - `IPFS_WEBPACK_PLUGIN_NO_GETTER = false` disables the dapp ipfs get bundle function
  - `IPFS_WEBPACK_SWARM_CONNECT = multiaddr` multiaddress to connect to using `swarm.connect`
  - `IPFS_WEBPACK_UPLOAD = true` automatically upload to IPFS
+ - `IPFS_WEBPACK_ONLINE = true` bring internal ipfs node online
  - `IPFS_WEBPACK_CIDHOOK_PINNER = url` url for CIDHOOKd
  - `IPFS_WEBPACK_CIDHOOK_SECRET = secret` shared secret for CIDHOOKd
  - `IPFS_WEBPACK_CIDHOOK_WAIT = 10000` Timeout in ms for Pin operation
  - `IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY = private_key` Private key for zippie Permastore2 operations
+ - `IPFS_BLOCK_PINNER_ADDRESS = http://localhost:8099` url for block pinning service
 
 ## Dapp Configuration
 
