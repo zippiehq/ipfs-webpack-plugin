@@ -50,6 +50,7 @@ async function run() {
       if (process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
         console.log('Appending CID ' + filelist[source_dir].hash + ' to Zippie permastore2')
         let result = await zutils.permastore.insertCID(filelist[source_dir].hash, zutils.signers.secp256k1(process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY))
+        console.log('Available at https://klaatu.dev.zippie.org/#dev-content=/permastore2/' + result.path.split('/')[0])
       }
 
       if (process.env.IPFS_BLOCK_PINNER_ADDRESS) {
