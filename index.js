@@ -57,7 +57,7 @@ class IpfsPlugin {
 
   getGetter($) {
     let code
-    let fastpeer = process.env.IPFS_WEBPACK_JSIPFS_FASTPEER ? 'https://de-ipfsfp.dev.zippie.org' : process.env.IPFS_WEBPACK_FASTPEER
+    let fastpeer = process.env.IPFS_WEBPACK_JSIPFS_FASTPEER ? 'https://de-ipfsfp.dev.zippie.org' : process.env.IPFS_WEBPACK_JSIPFS_FASTPEER
     if (process.env.IPFS_WEBPACK_JSIPFS_GETTER) {
       code = `
       import * as IPFS from 'ipfs';

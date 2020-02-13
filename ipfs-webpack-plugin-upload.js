@@ -62,22 +62,28 @@ async function run() {
         for (k in refs) {
           cids.push(refs[k].ref)
         }
-        const resp1 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/check_blocks', cids)
-        console.info(resp1.data.unpinned)
-
-        for (let i = 0; i < resp1.data.unpinned.length; i += 64) {
+        
+        let to_upload = cids
+        
+        if (process.env.IPFS_BLOCK_PINNER_CHECK_BEFORE) {
+           const resp1 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/check_blocks', cids)
+           console.info(resp1.data.unpinned)
+           to_upload = resp1.data.unpinned
+        }
+        
+        for (let i = 0; i < to_upload.length; i += 32) {
           const data = new FormData()
-          const chunks = resp1.data.unpinned.slice(i, i+64)
+          const chunks = to_upload.slice(i, i+32)
 
           for (let j = 0; j < chunks.length; j++) {
             const ref = chunks[j]
             const block = await ipfs.block.get(ref)
-
+            console.log('adding ' + ref + ' to upload')
             data.append('block', block.data, { filename: ref })
           }
 
           const resp2 = await axios.post(process.env.IPFS_BLOCK_PINNER_ADDRESS + '/put_signed_blocks', data, { headers: data.getHeaders() })
-          console.info(resp2.status)
+          console.info('chunk upload status: ' + resp2.status)
         }
       }
 
