@@ -208,7 +208,6 @@ class IpfsPlugin {
             var css = ` + JSON.stringify(css) + `;
             
             (async (css) => {
-              await window.ipfs.ready
               for (var i = 0; i < css.length; i++) {
                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
                  var brotli = false
@@ -219,10 +218,7 @@ class IpfsPlugin {
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
-                 var content = await window.ipfs.cat(hash, {})
-                 if (brotli) {
-                    content = window.brotli_decompress(content)
-                 }
+                 let content = await window.ipfs_fetch(hash, brotli)
 
                  console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
                  var linkTag = document.createElement('link');
@@ -242,7 +238,6 @@ class IpfsPlugin {
             var scripts = ` + JSON.stringify(scripts) + `;
             
             (async (scripts) => {
-              await window.ipfs.ready
               for (var i = 0; i < scripts.length; i++) {
                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
                  var brotli = false
@@ -253,10 +248,7 @@ class IpfsPlugin {
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
-                 var content = await window.ipfs.cat(hash, {})
-                 if (brotli) {
-                    content = window.brotli_decompress(content)
-                 }
+                 let content = await window.ipfs_fetch(hash, brotli)
 
                  console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
                  var newscript = document.createElement('script')
