@@ -128,6 +128,24 @@ class IpfsPlugin {
          }
       })
     }
+    
+    window.ipfs_fetch = async function(cid, brotli = false) {
+      if (false) {
+      const chunks = []
+      for await (const chunk of window.ipfs.cat(cid)) {
+        chunks.push(chunk)
+      }
+      const contents = Buffer.concat(chunks)
+      }
+      
+      let contents = await window.ipfs.cat(cid)
+ 
+      let decompressed = contents
+      if (brotli) {
+         throw 'no support for brotli'
+      }
+      return decompressed
+    }
     `    
     }
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
@@ -287,6 +305,8 @@ class IpfsPlugin {
               JSON.stringify(filelist)
             );          
             console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
+            await this.ipfs.stop()
+            console.log('stopped ipfs')
             callback();
       }).catch((err) => {
         console.log(err)
