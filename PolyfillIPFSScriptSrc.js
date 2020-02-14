@@ -33,19 +33,15 @@ module.exports = class PolyfillIPFSScriptSrc {
                           element.onerror = element.onload = null;
                           element.removeAttribute('src')
                           
-                          window.ipfs.ready.then(() => {
-                            window.ipfs.cat(hash, {}).then(function(result) {
-                              console.log('[chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
-                              if (brotli) {
-                                result = window.brotli_decompress(result)
-                              }
-                              newscript.removeAttribute('src')
-                              newscript.text = result.toString('utf8')
-                              newscript.onerror = newscript.onload = onScriptComplete
-                              console.log('[chunk[ loading ' + src + ' as text')
-                              document.head.appendChild(newscript);
-                            })
-                          })  
+                          window.ipfs_fetch(hash, brotli).then(function(result) {
+                             console.log('[chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
+
+                             newscript.removeAttribute('src')
+                             newscript.text = result.toString('utf8')
+                             newscript.onerror = newscript.onload = onScriptComplete
+                             console.log('[chunk[ loading ' + src + ' as text')
+                             document.head.appendChild(newscript);
+                          })
                         } else {
                           console.log('not using the usual path.. ')
                           element.onerror = element.onload = onScriptComplete
@@ -79,17 +75,13 @@ module.exports = class PolyfillIPFSScriptSrc {
                           }
                           console.log('[css-chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                           
-                          window.ipfs.ready.then(() => {
-                            window.ipfs.cat(hash, {}).then(function(result) {
-                              console.log('[css-chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
-                              if (brotli) {
-                                 result = window.brotli_decompress(result)
-                              }
-                              linkTag.href = 'data:text/css;base64,' + result.toString('base64')
-                              console.log('[css-chunk[ loading ' + src + ' as data uri')
-                              head.appendChild(linkTag)
-                            })
-                          })  
+                          window.ipfs_fetch(hash, brotli).then(function(result) {
+                            console.log('[css-chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
+
+                            linkTag.href = 'data:text/css;base64,' + result.toString('base64')
+                            console.log('[css-chunk[ loading ' + src + ' as data uri')
+                            head.appendChild(linkTag)
+                          })
                         } else {
                           head.appendChild(linkTag);
                         }

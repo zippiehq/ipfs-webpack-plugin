@@ -59,7 +59,7 @@ class IpfsPlugin {
 
   getGetter($) {
     let code
-    let fastpeer = process.env.IPFS_WEBPACK_JSIPFS_FASTPEER ? 'https://de-ipfsfp.dev.zippie.org' : process.env.IPFS_WEBPACK_JSIPFS_FASTPEER
+    let fastpeer = process.env.IPFS_WEBPACK_JSIPFS_FASTPEER ? process.env.IPFS_WEBPACK_JSIPFS_FASTPEER : 'https://global-ipfs-fp.dev.zippie.org'
     if (process.env.IPFS_WEBPACK_JSIPFS_GETTER) {
       code = `
       import * as IPFS from 'ipfs';
@@ -127,6 +127,24 @@ class IpfsPlugin {
             return window.parent.postMessage(message, origin)
          }
       })
+    }
+    
+    window.ipfs_fetch = async function(cid, brotli = false) {
+      if (false) {
+      const chunks = []
+      for await (const chunk of window.ipfs.cat(cid)) {
+        chunks.push(chunk)
+      }
+      const contents = Buffer.concat(chunks)
+      }
+      
+      let contents = await window.ipfs.cat(cid)
+ 
+      let decompressed = contents
+      if (brotli) {
+         throw 'no support for brotli'
+      }
+      return decompressed
     }
     `    
     }
@@ -208,7 +226,6 @@ class IpfsPlugin {
             var css = ` + JSON.stringify(css) + `;
             
             (async (css) => {
-              await window.ipfs.ready
               for (var i = 0; i < css.length; i++) {
                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
                  var brotli = false
@@ -219,10 +236,7 @@ class IpfsPlugin {
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
-                 var content = await window.ipfs.cat(hash, {})
-                 if (brotli) {
-                    content = window.brotli_decompress(content)
-                 }
+                 let content = await window.ipfs_fetch(hash, brotli)
 
                  console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
                  var linkTag = document.createElement('link');
@@ -242,7 +256,6 @@ class IpfsPlugin {
             var scripts = ` + JSON.stringify(scripts) + `;
             
             (async (scripts) => {
-              await window.ipfs.ready
               for (var i = 0; i < scripts.length; i++) {
                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
                  var brotli = false
@@ -253,10 +266,7 @@ class IpfsPlugin {
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
-                 var content = await window.ipfs.cat(hash, {})
-                 if (brotli) {
-                    content = window.brotli_decompress(content)
-                 }
+                 let content = await window.ipfs_fetch(hash, brotli)
 
                  console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
                  var newscript = document.createElement('script')
@@ -295,6 +305,8 @@ class IpfsPlugin {
               JSON.stringify(filelist)
             );          
             console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
+            await this.ipfs.stop()
+            console.log('stopped ipfs')
             callback();
       }).catch((err) => {
         console.log(err)
