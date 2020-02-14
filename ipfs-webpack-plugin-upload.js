@@ -57,7 +57,9 @@ async function run() {
         const refs = []
 
         refs.push({ ref: filelist[source_dir].hash })
-        refs.push(...await ipfs.refs(filelist[source_dir].hash, { recursive: true, unique: true }))
+        for await (const ref of ipfs.refs(filelist[source_dir].hash, { recursive: true, unique: true })) {
+          refs.push(ref)
+        }
 
         const cids = []
         for (k in refs) {

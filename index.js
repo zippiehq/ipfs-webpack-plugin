@@ -33,6 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 const IPFS = require('ipfs')
+const IpfsHttpClient = require('ipfs-http-client')
+const { globSource } = IpfsHttpClient
 const fs = require("fs");
 const cheerio = require("cheerio");
 const webpack = require("webpack");
@@ -162,26 +164,26 @@ class IpfsPlugin {
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
       var filelist;
      
-      IPFS.create({repo: this.ipfs_repo, start: false}).then(async (ipfs) => {
+      IPFS.create({repo: this.ipfs_repo, start: true, offline: true}).then(async (ipfs) => {
         this.ipfs = ipfs
-        var result = await this.ipfs.addFromFs(
-          this.source_dir,
+        var result = await this.ipfs.add(
+          globSource(this.source_dir,
           {
             recursive: true,
             ignore: this.wrapper_list,
             wrapWithDirectory: false
-          })
+          }))
 
-          result.map(file => {
+          for await (const file of result) {
             filelist = {
               ...filelist,
               [file.path]: {
                 path: file.path,
-                hash: file.hash,
+                hash: file.cid.toString(),
                 size: file.size
               }
             };
-          });
+          }
 
           const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
           const $ = cheerio.load(html, {xmlMode: false});
@@ -271,23 +273,23 @@ class IpfsPlugin {
             await this.getGetter($)
           }
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
-          result = await this.ipfs.addFromFs(
-            this.source_dir,
+          result = await this.ipfs.add(
+            globSource(this.source_dir,
             {
               recursive: true,
               wrapWithDirectory: false
-            })
+            }))
             var filelist
-            result.map(file => {
+            for await (const file of result) {
               filelist = {
                 ...filelist,
                 [file.path]: {
                   path: file.path,
-                  hash: file.hash,
+                  hash: file.cid.toString(),
                   size: file.size
                 }
               };
-            });
+            }
             fs.writeFileSync(
               `${appDirectory}/` + this.ipfs_filelist,
               JSON.stringify(filelist)
