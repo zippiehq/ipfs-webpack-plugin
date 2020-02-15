@@ -1,6 +1,6 @@
 {
   "name": "@zippie/ipfs-webpack-plugin",
-  "version": "1.1.21",
+  "version": "1.1.22",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
   "scripts": {
@@ -34,7 +34,9 @@
     "level-mem": "^5.0.1",
     "multihashes": "^0.4.15",
     "multihashing-async": "^0.8.0",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.0"
+  },
+  "devDependencies": {
     "webpack": "^4.39.3"
   }
 }
