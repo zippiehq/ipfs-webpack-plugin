@@ -202,7 +202,18 @@ class IpfsPlugin {
               }
             };
           }
-
+          
+          for (const file in filelist) {
+            if (file.endsWith('.js')) {
+               let contents = fs.readFileSync(file).toString('utf8')
+               if (filelist[file + '.map']) {
+                  console.log('rewriting source map url in ' + file + ' to be IPFS ' + filelist[file + '.map'].hash)
+                  contents = contents.replace(/\/\/# sourceMappingURL=.*/, '//# sourceMappingURL=https://gateway.ipfs.io/ipfs/' + filelist[file + '.map'].hash)
+                  fs.writeFileSync(file, contents)
+               }
+            }
+          }
+          
           const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
           const $ = cheerio.load(html, {xmlMode: false});
           const jsRootHash = filelist[this.source_dir].hash;
@@ -283,6 +294,7 @@ class IpfsPlugin {
             await this.getGetter($)
           }
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
+          
           result = await this.ipfs.add(
             globSource(this.source_dir,
             {
