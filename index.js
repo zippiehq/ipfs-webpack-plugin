@@ -182,7 +182,7 @@ class IpfsPlugin {
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
       var filelist;
      
-      IPFS.create({repo: this.ipfs_repo, start: true, offline: true}).then(async (ipfs) => {
+      IPFS.create({repo: this.ipfs_repo, start: false, offline: true}).then(async (ipfs) => {
         this.ipfs = ipfs
         var result = await this.ipfs.add(
           globSource(this.source_dir,
@@ -322,7 +322,6 @@ class IpfsPlugin {
             );          
             console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
             await this.ipfs.stop()
-            console.log('stopped ipfs')
             callback();
       }).catch((err) => {
         console.log(err)
