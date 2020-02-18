@@ -285,26 +285,43 @@ class IpfsPlugin {
                  
                  let content = await window.ipfs_fetch(hash, brotli)
                  let contentString = content.toString();
-                 // only if the css have fonts
-                 if(contentString.includes('.woff2')|| contentString.includes('.woff') || contentString.includes('.eot')|| contentString.includes('.ttf')|| contentString.includes('.otf')) {
-                   // get all fonts paths 
-                   const fonts = await Object.keys(window.ipfsWebpackFiles).filter(path => path.includes('.woff2') || path.includes('.woff') || path.includes('.eot') || path.includes('.ttf')|| path.includes('.otf')).reduce( async (acc, path) => {
-                   const asset = window.ipfsWebpackFiles[path];
-
-                   const assetContent = await window.ipfs_fetch(asset.hash, false);
-
-                   const assetPath = asset.path.replace('build','');
-                    const trueType = assetPath.split('.').pop()
-                   return {...await acc, [assetPath]: {assetContent, trueType}}
-                 }, {})
-
-                 Object.keys(fonts).forEach(fontPath => {
-                  const trueType = fonts[fontPath].trueType;
-                   const fontContent ='data:font/' + trueType + ';charset=utf-8;base64,' +  fonts[fontPath].assetContent.toString('base64');
-                   const reg = new RegExp(fontPath)
-                   contentString = contentString.replace(reg, fontContent)
-                 })
-                }
+                 // get all fonts paths that are present inside the css file
+                 const fonts = await Object.keys(window.ipfsWebpackFiles)
+                   .filter(
+                     path =>
+                       path.includes(".woff2") ||
+                       path.includes(".woff") ||
+                       path.includes(".eot") ||
+                       path.includes(".ttf") ||
+                       path.includes(".otf")
+                   )
+                   .filter(path => {
+                     const assetPath = path.replace("build", "");
+                     const p = "url(" + assetPath + ")";
+                     return contentString.includes(p);
+                   })
+                   .reduce(async (acc, path) => {
+                     const asset = window.ipfsWebpackFiles[path];
+                 
+                     const assetContent = await window.ipfs_fetch(asset.hash, false);
+                 
+                     const assetPath = asset.path.replace("build", "");
+                     const trueType = assetPath.split(".").pop();
+                     return { ...(await acc), [assetPath]: { assetContent, trueType } };
+                   }, {});
+                 if (Object.entries(fonts).length !== 0 && obj.constructor === Object) {
+                   Object.keys(fonts).forEach(fontPath => {
+                     const trueType = fonts[fontPath].trueType;
+                     const fontContent =
+                       "data:font/" +
+                       trueType +
+                       ";charset=utf-8;base64," +
+                       fonts[fontPath].assetContent.toString("base64");
+                     const reg = new RegExp(fontPath);
+                     contentString = contentString.replace(reg, fontContent);
+                   });
+                 }
+                
                  console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
                  var linkTag = document.createElement('link');
                  linkTag.type = 'text/css';
