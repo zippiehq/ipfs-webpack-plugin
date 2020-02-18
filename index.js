@@ -40,6 +40,7 @@ const cheerio = require("cheerio");
 const webpack = require("webpack");
 const dotenv = require('dotenv')
 const fetch = require('node-fetch');
+const brotli = require('brotli');
 const appDirectory = fs.realpathSync(process.cwd());
 
 dotenv.config()
@@ -217,6 +218,22 @@ class IpfsPlugin {
                   }
                }
             }
+          }
+          
+          if (process.env.IPFS_WEBPACK_BROTLI) {
+            for (const file in filelist) {
+              if (!file.endsWith('.br')) {
+                 let contents = fs.readFileSync(file)
+                 if (filelist[file].size > 4000) {
+                    contents = brotli.compress(contents)
+                    let result = await this.ipfs.add(contents)
+                    for await (const f of result) {
+                      filelist[file + '.br'] = {path: file + '.br', f.cid.toString, f.size}
+                      console.log('brotli compressed ' + file + ' before ' + filelist[file].size + ' after ' + contents.length)
+                    }
+                 }
+              }
+            }          
           }
           const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
           const $ = cheerio.load(html, {xmlMode: false});
