@@ -77,8 +77,54 @@ module.exports = class PolyfillIPFSScriptSrc {
                           
                           window.ipfs_fetch(hash, brotli).then(function(result) {
                             console.log('[css-chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
-
-                            linkTag.href = 'data:text/css;base64,' + result.toString('base64')
+                            // only if the css have fonts
+                            let contentString = result.toString();
+                            if (
+                              contentString.includes(".woff2") ||
+                              contentString.includes(".woff") ||
+                              contentString.includes(".eot") ||
+                              contentString.includes(".ttf") ||
+                              contentString.includes(".otf")
+                            ) {
+                              // get all fonts paths
+                              const fonts = await Object.keys(window.ipfsWebpackFiles)
+                                .filter(
+                                  path =>
+                                    path.includes(".woff2") ||
+                                    path.includes(".woff") ||
+                                    path.includes(".eot") ||
+                                    path.includes(".ttf") ||
+                                    path.includes(".otf")
+                                )
+                                .filter(path => {
+                                  const assetPath = path.replace("build", "");
+                                  const p = "url(" + assetPath + ")";
+                                  return contentString.includes(p);
+                                })
+                                .reduce(async (acc, path) => {
+                                  const asset = window.ipfsWebpackFiles[path];
+                            
+                                  const assetContent = await window.ipfs_fetch(asset.hash, false);
+                            
+                                  const assetPath = asset.path.replace("build", "");
+                                  const trueType = assetPath.split(".").pop();
+                                  return { ...(await acc), [assetPath]: { assetContent, trueType } };
+                                }, {});
+                              if (Object.entries(fonts).length !== 0 && obj.constructor === Object) {
+                                Object.keys(fonts).forEach(fontPath => {
+                                  const trueType = fonts[fontPath].trueType;
+                                  const fontContent =
+                                    "data:font/" +
+                                    trueType +
+                                    ";charset=utf-8;base64," +
+                                    fonts[fontPath].assetContent.toString("base64");
+                                  const reg = new RegExp(fontPath);
+                                  contentString = contentString.replace(reg, fontContent);
+                                });
+                              }
+                            }
+                            
+                            linkTag.href = 'data:text/css;base64,' + btoa(contentString)
                             console.log('[css-chunk[ loading ' + src + ' as data uri')
                             head.appendChild(linkTag)
                           })
