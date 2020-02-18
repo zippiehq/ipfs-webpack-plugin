@@ -121,13 +121,18 @@ class IpfsPlugin {
     } else {
       code = `
     import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
-
+    import { BrotliDecompressBuffer as decompress } from "@zippie/brotli/dec/decode";
+    
     if (!window.ipfs) {
       window.ipfs = createProxyClient({
          postMessage: function(message, origin) {
             return window.parent.postMessage(message, origin)
          }
       })
+    }
+    
+    window.brotli_decompress = function (content) {
+      return Buffer.from(decompress(content))
     }
     
     window.ipfs_fetch = async function(cid, brotli = false) {
@@ -143,7 +148,12 @@ class IpfsPlugin {
  
       let decompressed = contents
       if (brotli) {
-         throw 'no support for brotli'
+        try {
+          decompressed = Buffer.from(window.brotli_decompress(decompressed))
+          console.log('decompress ok')
+        } catch (err) {
+          console.log(err)
+        }
       }
       return decompressed
     }
@@ -228,18 +238,19 @@ class IpfsPlugin {
                    if (filelist[file].size > 4000) {
                       contents = zlib.brotliCompressSync(contents)
                       let result = await this.ipfs.add(contents)
+                      fs.writeFileSync(file + '.br', contents)
                       for await (const f of result) {
                         filelist[file + '.br'] = {path: file + '.br', hash: f.cid.toString(), size: f.size}
                         console.log('brotli compressed ' + file + ' before ' + filelist[file].size + ' after ' + contents.length)
                       }
                    }
-                 } catch (err) {
+                  } catch (err) {
                     // probably a directory
                  }
               }          
             }
           }
-          const html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
+          var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
           const $ = cheerio.load(html, {xmlMode: false});
           const jsRootHash = filelist[this.source_dir].hash;
           var scriptsEle = $("script[src^='/']")
@@ -318,7 +329,9 @@ class IpfsPlugin {
           if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
             await this.getGetter($)
           }
-          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, $.html());
+          html = $.html()
+          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, html);
+          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html.br`, zlib.brotliCompressSync(Buffer.from(html, 'utf8')))
           
           result = await this.ipfs.add(
             globSource(this.source_dir,
