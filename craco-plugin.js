@@ -10,7 +10,7 @@ module.exports = {
       { 
         plugin: base64Loader,
         options: {
-          test: /\.(ttf|eot|otf|svg|woff(2)?)$/i,
+          test: /\.(svg?)$/i,
           limit: 99999999999999999999,
         }
       })
