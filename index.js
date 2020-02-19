@@ -296,16 +296,17 @@ class IpfsPlugin {
                        path.includes(".otf")
                    )
                    .filter(path => {
-                     const assetPath = path.replace("build", "");
+                     const assetPath = path.replace(window.ipfsWebpackSourceDir + '/', "/");
                      const p = "url(" + assetPath + ")";
                      return contentString.includes(p);
                    })
                    .reduce(async (acc, path) => {
                      const asset = window.ipfsWebpackFiles[path];
-                 
+                     console.log('[ipfs-webpack-plugin] grabbing ' + path + ' from ' + asset.hash)
                      const assetContent = await window.ipfs_fetch(asset.hash, false);
+                     console.log('[ipfs-webpack-plugin] grabbed ' + path + ' from ' + asset.hash)
                  
-                     const assetPath = asset.path.replace("build", "");
+                     const assetPath = asset.path.replace(window.ipfsWebSourceDir + '/', "/");
                      const trueType = assetPath.split(".").pop();
                      return { ...(await acc), [assetPath]: { assetContent, trueType } };
                    }, {});

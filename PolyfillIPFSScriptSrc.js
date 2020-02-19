@@ -97,16 +97,16 @@ module.exports = class PolyfillIPFSScriptSrc {
                                     path.includes(".otf")
                                 )
                                 .filter(path => {
-                                  const assetPath = path.replace("build", "");
+                                  const assetPath = path.replace(window.ipfsWebpackSourceDir + '/', "/");
                                   const p = "url(" + assetPath + ")";
                                   return contentString.includes(p);
                                 })
                                 .reduce(async (acc, path) => {
                                   const asset = window.ipfsWebpackFiles[path];
-                            
+                                  console.log('[css-chunk] grabbing ' + path + ' from ' + asset.hash)
                                   const assetContent = await window.ipfs_fetch(asset.hash, false);
-                            
-                                  const assetPath = asset.path.replace("build", "");
+                                  console.log('[css-chunk] grabbed ' + path + ' from ' + asset.hash)
+                                  const assetPath = asset.path.replace(window.ipfsWebpackSourceDir + '/', "/");
                                   const trueType = assetPath.split(".").pop();
                                   return { ...(await acc), [assetPath]: { assetContent, trueType } };
                                 }, {});
