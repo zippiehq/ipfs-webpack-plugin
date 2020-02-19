@@ -145,7 +145,9 @@ class IpfsPlugin {
         filename: "ipfsGetterBundle.js"
       },
       resolve: {
-         'ipfs-bitswap': '@zippie/ipfs-bitswap'
+         alias: {
+           'ipfs-bitswap': '@zippie/ipfs-bitswap'
+         }
       }
     };
     const compiler = webpack(options);
