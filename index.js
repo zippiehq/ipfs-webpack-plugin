@@ -69,13 +69,34 @@ class IpfsPlugin {
       import * as Block from 'ipfs-block'
       import { BrotliDecompressBuffer as decompress } from "@zippie/brotli/dec/decode";
       
-      var bootstrap = ["/dns4/ipfstest.zippie.org/tcp/443/wss/ipfs/QmSjrxBW9vwj4Cm1LyodeqzUGkCvZXQjREY7zogWXxE6ne"]
-      window.ipfs = new IPFS({config: {Bootstrap: bootstrap}, preload: {enabled: false } })
-    window.brotli_decompress = function (content) {
-      return Buffer.from(decompress(content))
-    }
+      window.ipfs_ready_state = 0
+      window.ipfs_ready_waiting = []
+      window.ipfs_ready = function () { 
+         return new Promise((resolve, reject) => {
+           if (this.ipfs_ready_state == 2) return resolve()
+           if (this.ipfs_ready_state == 0) {
+              this.ipfs_ready_state = 1
+              var bootstrap = ["/dns4/ipfstest.zippie.org/tcp/443/wss/ipfs/QmSjrxBW9vwj4Cm1LyodeqzUGkCvZXQjREY7zogWXxE6ne"]
+              IPFS.create({config: {Bootstrap: bootstrap}, preload: {enabled: false } }).then((ipfs) => {
+                 window.ipfs = ipfs
+                 resolve()
+                 for (var i = 0; i < window.ipfs_ready_waiting.length; i++) {
+                   window.ipfs_ready_waiting[i]()
+                 }
+                 this.ipfs_ready_state = 2
+              })
+           } else {
+              window.ipfs_ready_waiting.push(resolve)
+           }
+         })
+      }
+      
+      window.brotli_decompress = function (content) {
+        return Buffer.from(decompress(content))
+      }
     
     window.ipfs_fetch = async function(cid, brotli = false) {
+      await window.ipfs_ready()
       const chunks = []
       for await (const chunk of window.ipfs.cat(cid)) {
         chunks.push(chunk)
