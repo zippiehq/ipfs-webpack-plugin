@@ -110,7 +110,7 @@ module.exports = class PolyfillIPFSScriptSrc {
                                   const trueType = assetPath.split(".").pop();
                                   return { ...(await acc), [assetPath]: { assetContent, trueType } };
                                 }, {});
-                              if (Object.entries(fonts).length !== 0 && obj.constructor === Object) {
+                              if (Object.entries(fonts).length !== 0 && fonts.constructor === Object) {
                                 Object.keys(fonts).forEach(fontPath => {
                                   const trueType = fonts[fontPath].trueType;
                                   const fontContent =
