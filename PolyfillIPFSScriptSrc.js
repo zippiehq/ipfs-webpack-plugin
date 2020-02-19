@@ -13,6 +13,39 @@ module.exports = class PolyfillIPFSScriptSrc {
                 'PolyfillIPFSScriptSrc can only be used when compiling for web (where JsonpMainTemplatePlugin is active)'
               )
             }
+            
+            compilation.mainTemplate.hooks.linkPrefetch.tap(
+              'PolyfillIPFSScriptSrc',
+              () => {
+                  return  `
+                    const src = jsonpScriptSrc(chunkId);
+                    if (__webpack_require__.nc) {
+                      script.setAttribute("nonce", __webpack_require__.nc);
+                    }
+                    if (window.ipfsWebpackFiles['build' + src]) {
+                      var hash = window.ipfsWebpackFiles['build' + src].hash
+                      var brotli = false
+                      if (window.brotli_decompress && window.ipfsWebpackFiles['build' + src + '.br']) {
+                        brotli = true
+                        hash = window.ipfsWebpackFiles['build' + src + '.br'].hash
+                      }
+                      console.log('[chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
+                      var link = document.createElement('script');
+                      link.id = hash;
+                      console.log('prefetching', src)
+                      window.ipfs_fetch(hash, brotli)
+                      // remove scripts unused;
+                      setTimeout(() => {
+                          document.head.removeChild(link)
+                      }, 2000);
+
+                    } else {
+                      console.log('not using the usual path.. ')
+                    
+                    }
+                  `
+              }
+            )
             const wrap = hook => {
               hook.tap(
                 'PolyfillIPFSScriptSrc',
@@ -42,6 +75,10 @@ module.exports = class PolyfillIPFSScriptSrc {
                              console.log('[chunk[ loading ' + src + ' as text')
                              document.head.appendChild(newscript);
                           })
+                          // remove scripts unused;
+                          setTimeout(() => {
+                            document.head.removeChild(element)
+                        }, 2000);
                         } else {
                           console.log('not using the usual path.. ')
                           element.onerror = element.onload = onScriptComplete
@@ -57,8 +94,7 @@ module.exports = class PolyfillIPFSScriptSrc {
               )
             }
             wrap(compilation.mainTemplate.hooks.jsonpScript)
-            wrap(compilation.mainTemplate.hooks.linkPreload)
-            wrap(compilation.mainTemplate.hooks.linkPrefetch)
+
 
             const wrap2 = hook => {
                hook.tap('PolyfillIPFSScriptSrc', (source, chunk, hash, moduleTemplate, dependencyTemplates) => {
@@ -133,8 +169,9 @@ module.exports = class PolyfillIPFSScriptSrc {
                         }
                     })(head, linkTag, fullhref)`)
                     
-                  console.log('after ' + source)
-                                      
+                    console.log('after ' + source)
+
+                    
                   return source
                })
             }
