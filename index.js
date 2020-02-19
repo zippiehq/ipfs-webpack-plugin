@@ -284,7 +284,7 @@ class IpfsPlugin {
                      const assetContent = await window.ipfs_fetch(asset.hash, false);
                      console.log('[ipfs-webpack-plugin] grabbed ' + path + ' from ' + asset.hash)
                  
-                     const assetPath = asset.path.replace(window.ipfsWebSourceDir + '/', "/");
+                     const assetPath = asset.path.replace(window.ipfsWebpackSourceDir + '/', "/");
                      const trueType = assetPath.split(".").pop();
                      return { ...(await acc), [assetPath]: { assetContent, trueType } };
                    }, {});
