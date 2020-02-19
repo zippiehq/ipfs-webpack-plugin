@@ -75,7 +75,7 @@ module.exports = class PolyfillIPFSScriptSrc {
                           }
                           console.log('[css-chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                           
-                          window.ipfs_fetch(hash, brotli).then(function(result) {
+                          window.ipfs_fetch(hash, brotli).then(async (result) => {
                             console.log('[css-chunk[ ipfs loaded ' +  src + ' from ' +  hash + ' brotli: ' + brotli)
                             // only if the css have fonts
                             let contentString = result.toString();

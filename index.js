@@ -299,7 +299,7 @@ class IpfsPlugin {
                        trueType +
                        ";charset=utf-8;base64," +
                        fonts[fontPath].assetContent.toString("base64");
-                     const reg = new RegExp(fontPath);
+                     const reg = new RegExp(fontPath, 'g');
                      contentString = contentString.replace(reg, fontContent);
                    });
                  }
