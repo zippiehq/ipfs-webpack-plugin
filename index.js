@@ -67,6 +67,7 @@ class IpfsPlugin {
       import * as multihash from 'multihashes'
       import * as multihashing from 'multihashing-async'
       import * as Block from 'ipfs-block'
+      import { BrotliDecompressBuffer as decompress } from "@zippie/brotli/dec/decode";
       
       var bootstrap = ["/dns4/ipfstest.zippie.org/tcp/443/wss/ipfs/QmSjrxBW9vwj4Cm1LyodeqzUGkCvZXQjREY7zogWXxE6ne"]
       window.ipfs = new IPFS({config: {Bootstrap: bootstrap}, preload: {enabled: false } })
