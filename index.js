@@ -67,56 +67,31 @@ class IpfsPlugin {
       import * as multihash from 'multihashes'
       import * as multihashing from 'multihashing-async'
       import * as Block from 'ipfs-block'
-  
+      
       var bootstrap = ["/dns4/ipfstest.zippie.org/tcp/443/wss/ipfs/QmSjrxBW9vwj4Cm1LyodeqzUGkCvZXQjREY7zogWXxE6ne"]
       window.ipfs = new IPFS({config: {Bootstrap: bootstrap}, preload: {enabled: false } })
-      window.ipfs_fastpeer = '${fastpeer}'
-      class FastPeer {
-      constructor(realbitswap) {
-      this._realbitswap = realbitswap
+    window.brotli_decompress = function (content) {
+      return Buffer.from(decompress(content))
     }
-    async get(cid) {
-      let has_cid_locally = await this._realbitswap.blockstore.has(cid)
-  
-      if (!has_cid_locally) {
+    
+    window.ipfs_fetch = async function(cid, brotli = false) {
+      const chunks = []
+      for await (const chunk of window.ipfs.cat(cid)) {
+        chunks.push(chunk)
+      }
+      const contents = Buffer.concat(chunks)
+ 
+      let decompressed = contents
+      if (brotli) {
         try {
-          let res = await fetch(window.ipfs_fastpeer + '/api/v0/block/get/' + cid.toString(), {cache: 'force-cache'})
-          if (res.status === 200) {
-            let buf = Buffer.from(await res.arrayBuffer())
-            let m = multihash.decode(cid.multihash)
-            if (cid.multihash.equals(await multihashing(buf, m.code))) {
-              console.log('fetched ' + cid.toString())
-              return new Block(buf, cid)
-            }
-            console.info('data mismatch from fast peer')
-          }
+          decompressed = Buffer.from(window.brotli_decompress(decompressed))
+          console.log('decompress ok')
         } catch (err) {
-          console.log('something broke: ' + err)
+          console.log(err)
         }
       }
-      return this._realbitswap.get(cid)
-    }
-  
-    async getMany(cids) {
-      console.log('getMany ' + cids)
-  
-      return this._realbitswap.getMany(cids)
-    }
-  
-    async put(block) {
-      console.log('put ' + block)
-      return this._realbitswap.put(block)
-    }
-  
-    async putMany(blocks) {
-      console.log('putMany ' + blocks)
-      return this._realbitswap.putMany(blocks)
-    }
-  }
-      window.ipfs.on('ready', async () => {
-         window.ipfs._blockService.setExchange(new FastPeer(window.ipfs._blockService._bitswap))
-         console.log('set exchange sorted out')
-      })`
+      return decompressed
+    }`
 
     } else {
       code = `
@@ -168,6 +143,9 @@ class IpfsPlugin {
       output: {
         path: appDirectory,
         filename: "ipfsGetterBundle.js"
+      },
+      resolve: {
+         'ipfs-bitswap': '@zippie/ipfs-bitswap'
       }
     };
     const compiler = webpack(options);
