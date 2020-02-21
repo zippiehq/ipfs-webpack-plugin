@@ -1,10 +1,11 @@
 {
   "name": "@zippie/ipfs-webpack-plugin",
-  "version": "1.1.51",
+  "version": "1.1.52",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build-stub": "IPFS_WEBPACK_NO_INDEX=1 IPFS_WEBPACK_PLUGIN_NO_GETTER=1 webpack --config webpack.prod.config.js",
+    "publish-stub": "IPFS_WEBPACK_UPLOAD=1 IPFS_BLOCK_PINNER_ADDRESS=https://global-ipfs-bp.dev.zippie.org ./ipfs-webpack-plugin-upload.js"
   },
   "repository": {
     "type": "git",
@@ -39,6 +40,9 @@
     "node-fetch": "^2.6.0"
   },
   "devDependencies": {
+    "brotli-webpack-plugin": "^1.1.0",
+    "core-js": "^3.6.4",
+    "regenerator-runtime": "^0.13.3",
     "webpack": "^4.39.3"
   }
 }

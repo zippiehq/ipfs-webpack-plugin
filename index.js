@@ -58,7 +58,7 @@ class IpfsPlugin {
     this.ipfs_filelist = _ipfs_filelist
   }
 
-  getGetter($) {
+  getGetter() {
     let code
     let fastpeer = process.env.IPFS_WEBPACK_JSIPFS_FASTPEER ? process.env.IPFS_WEBPACK_JSIPFS_FASTPEER : 'https://global-ipfs-fp.dev.zippie.org'
     if (process.env.IPFS_WEBPACK_JSIPFS_GETTER) {
@@ -117,43 +117,36 @@ class IpfsPlugin {
 
     } else {
       code = `
-    import { createProxyClient } from "@zippie/ipfs-postmsg-proxy";
-    import { BrotliDecompressBuffer as decompress } from "@zippie/brotli/dec/decode";
-    
-    if (!window.ipfs) {
-      window.ipfs = createProxyClient({
-         postMessage: function(message, origin) {
-            return window.parent.postMessage(message, origin)
+         /* stub to load stuff */
+         window.ipfs_ready_waiting = [] 
+         function ipfs_stub_message_callback(event) {
+            if (event.data.result.contents) {
+               window.removeEventListener('message', ipfs_stub_message_callback)
+               window.eval(event.data.result.contents) // load the stub
+               console.log('[ipfs stub loaded]')
+               for (var i = 0; i < window.ipfs_ready_waiting.length; i++) {
+                  window.ipfs_ready_waiting[i]()
+               }
+             }
+             
+         }      
+         window.addEventListener('message', ipfs_stub_message_callback)
+         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmWLb4vaMSERijfmFLJEeHNvHEJFyKyi3G4ga7MVZeyc56/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
+         
+         window.ipfs_ready = function() {
+            return new Promise((resolve, reject) => {
+               if (window.ipfs_stub_loaded) {
+                 resolve()
+               } else {
+                 window.ipfs_ready_waiting.push(resolve)
+               }
+            })
          }
-      })
-    }
-    
-    window.brotli_decompress = function (content) {
-      return Buffer.from(decompress(content))
-    }
-    
-    window.ipfs_fetch = async function(cid, brotli = false) {
-      if (false) {
-      const chunks = []
-      for await (const chunk of window.ipfs.cat(cid)) {
-        chunks.push(chunk)
-      }
-      const contents = Buffer.concat(chunks)
-      }
-      
-      let contents = await window.ipfs.cat(cid)
- 
-      let decompressed = contents
-      if (brotli) {
-        try {
-          decompressed = Buffer.from(window.brotli_decompress(decompressed))
-          console.log('decompress ok')
-        } catch (err) {
-          console.log(err)
-        }
-      }
-      return decompressed
-    }
+         
+         window.ipfs_fetch = async function (cid, brotli = false) {
+            await window.ipfs_ready()
+            return await window.ipfs_fetch(cid, brotli)
+         }
     `    
     }
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
@@ -179,10 +172,9 @@ class IpfsPlugin {
           console.log(stats.toJson("minimal"));
         }
         const bundle = fs.readFileSync(`${appDirectory}/ipfsGetterBundle.js`);
-        $("body").prepend(`<script>${bundle}</script>`);
         fs.unlinkSync(`${appDirectory}/ipfsGetterBundle.js`);
         fs.unlinkSync(`${appDirectory}/ipfsGetter.js`);
-        resolve();
+        resolve(bundle)
       });
     });
   }
@@ -252,36 +244,38 @@ class IpfsPlugin {
               }          
             }
           }
-          var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
-          const $ = cheerio.load(html, {xmlMode: false});
-          const jsRootHash = filelist[this.source_dir].hash;
-          var scriptsEle = $("script[src^='/']")
-          var scripts = []
           
-          for (var i = 0; i < scriptsEle.length; i++) {
-            scripts.push(scriptsEle[i].attribs['src'])
-          }
-          scriptsEle.remove()
-            $("body").prepend(`<script>
-            window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `;
-            window.ipfsWebpackSourceDir = ` + JSON.stringify(this.source_dir) + `;
-            </script>`)
-            var cssEle = $("link[rel=stylesheet]");
-            var css = []
-            for (var i = 0; i < cssEle.length; i++) {
-              css.push(cssEle[i].attribs['href'])
-            } 
-            $("body").append(`<script>
-            var css = ` + JSON.stringify(css) + `;
+          if (!process.env.IPFS_WEBPACK_NO_INDEX) {
+            var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
+            const $ = cheerio.load(html, {xmlMode: false});
+            const jsRootHash = filelist[this.source_dir].hash;
+            var scriptsEle = $("script[src^='/']")
+            var scripts = []
             
-            (async (css) => {
-              for (var i = 0; i < css.length; i++) {
-                 var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
-                 var brotli = false
-                 if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br']) {
-                    brotli = true
-                    hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
-                 }
+            for (var i = 0; i < scriptsEle.length; i++) {
+              scripts.push(scriptsEle[i].attribs['src'])
+            }
+            scriptsEle.remove()
+              $("body").prepend(`<script>
+              window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `;
+              window.ipfsWebpackSourceDir = ` + JSON.stringify(this.source_dir) + `;
+              </script>`)
+              var cssEle = $("link[rel=stylesheet]");
+              var css = []
+              for (var i = 0; i < cssEle.length; i++) {
+                css.push(cssEle[i].attribs['href'])
+              } 
+              $("body").append(`<script>
+              var css = ` + JSON.stringify(css) + `;
+              
+              (async (css) => {
+                for (var i = 0; i < css.length; i++) {
+                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
+                  var brotli = false
+                  if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br']) {
+                     brotli = true
+                     hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
+                  }
 
                  console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
                  
@@ -365,13 +359,16 @@ class IpfsPlugin {
             })
             </script>`);
             
-          if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
-            await this.getGetter($)
-          }
-          html = $.html()
-          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, html);
-          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html.br`, zlib.brotliCompressSync(Buffer.from(html, 'utf8')))
+            if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
+              let getter = await this.getGetter()
+              $("body").prepend(`<script>${getter}</script>`);
+            }
           
+            html = $.html()
+            fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, html);
+            fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html.br`, zlib.brotliCompressSync(Buffer.from(html, 'utf8')))
+          }       
+            
           result = await this.ipfs.add(
             globSource(this.source_dir,
             {
