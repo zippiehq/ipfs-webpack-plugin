@@ -50,7 +50,7 @@ const _ipfs_repo = process.env.IPFS_WEBPACK_REPO ? process.env.IPFS_WEBPACK_SOUR
 const _ipfs_filelist = process.env.IPFS_WEBPACK_FILELIST ? process.env.IPFS_WEBPACK_FILELIST : 'build-ipfs-filelist.json'
 
 class IpfsPlugin {
-  constructor(wrapper_list = ['index.html', 'manifest.json'], source_dir = _source_dir) {
+  constructor(wrapper_list = ['index.html'], source_dir = _source_dir) {
 
     this.wrapper_list = wrapper_list
     this.source_dir = source_dir
@@ -249,6 +249,23 @@ class IpfsPlugin {
           }
           
           if (!process.env.IPFS_WEBPACK_NO_INDEX) {
+            if (fs.existsSync(`${appDirectory}/` + this.source_dir + `/manifest.json`)) {
+               let r = JSON.parse(fs.readFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`))
+               if (r.start_url.startsWith('/index.html') && !r.start_url.endsWith('.br')) {
+                  r.start_url = r.start_url + '.br'
+                  let d = Buffer.from(JSON.stringify(r), 'utf8')
+                  fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`, d)
+                  let result = this.ipfs.add(d)
+                  console.log(filelist)
+                  for await (const f of result) {
+                    filelist[this.source_dir + '/manifest.json'].hash = f.cid.toString()
+                    filelist[this.source_dir + '/manifest.json'].size = f.size
+                  }
+                  console.log('Rewrote manifest.json')
+               }
+            }
+            
+          
             var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
             const $ = cheerio.load(html, {xmlMode: false});
             const jsRootHash = filelist[this.source_dir].hash;
