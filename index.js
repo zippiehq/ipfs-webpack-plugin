@@ -179,7 +179,10 @@ class IpfsPlugin {
     });
   }
   apply(compiler) {
-
+    if (!fs.existsSync(_source_dir)) {
+      console.log('[ipfs] no source dir exists, skipping')
+      return
+    }
     let publicPath = compiler.options.output.publicPath || "";
     if (publicPath && !publicPath.endsWith("/")) {
       publicPath += "/";
