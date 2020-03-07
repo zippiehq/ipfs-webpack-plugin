@@ -179,15 +179,16 @@ class IpfsPlugin {
     });
   }
   apply(compiler) {
-    if (!fs.existsSync(_source_dir)) {
-      console.log('[ipfs] no source dir exists, skipping')
-      return
-    }
     let publicPath = compiler.options.output.publicPath || "";
     if (publicPath && !publicPath.endsWith("/")) {
       publicPath += "/";
     }
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
+      if (!fs.existsSync(this._source_dir)) {
+        console.log('[ipfs] no source dir exists, skipping')
+        return
+      }
+  
       var filelist;
 
       IPFS.create({ repo: this.ipfs_repo, start: false, offline: true }).then(async (ipfs) => {
