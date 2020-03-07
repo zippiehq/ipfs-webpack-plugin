@@ -147,7 +147,7 @@ class IpfsPlugin {
             await window.ipfs_ready()
             return await window.ipfs_fetch(cid, brotli)
          }
-    `    
+    `
     }
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
     const jsTempPath = `${appDirectory}/ipfsGetter.js`;
@@ -160,9 +160,9 @@ class IpfsPlugin {
         filename: "ipfsGetterBundle.js"
       },
       resolve: {
-         alias: {
-           'ipfs-bitswap': '@zippie/ipfs-bitswap'
-         }
+        alias: {
+          'ipfs-bitswap': '@zippie/ipfs-bitswap'
+        }
       }
     };
     const compiler = webpack(options);
@@ -189,230 +189,232 @@ class IpfsPlugin {
     }
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
       var filelist;
-     
-      IPFS.create({repo: this.ipfs_repo, start: false, offline: true}).then(async (ipfs) => {
+
+      IPFS.create({ repo: this.ipfs_repo, start: false, offline: true }).then(async (ipfs) => {
         this.ipfs = ipfs
         var result = await this.ipfs.add(
           globSource(this.source_dir,
-          {
-            recursive: true,
-            ignore: this.wrapper_list,
-            wrapWithDirectory: false
-          }))
+            {
+              recursive: true,
+              ignore: this.wrapper_list,
+              wrapWithDirectory: false
+            }))
 
-          for await (const file of result) {
-            filelist = {
-              ...filelist,
-              [file.path]: {
-                path: file.path,
-                hash: file.cid.toString(),
-                size: file.size
+        for await (const file of result) {
+          filelist = {
+            ...filelist,
+            [file.path]: {
+              path: file.path,
+              hash: file.cid.toString(),
+              size: file.size
+            }
+          };
+        }
+        for (const file in filelist) {
+          if (file.endsWith('.js')) {
+            let contents = fs.readFileSync(file).toString('utf8')
+            if (filelist[file + '.map']) {
+              console.log('rewriting source map url in ' + file + ' to be IPFS ' + filelist[file + '.map'].hash)
+
+              contents = contents.replace(/\/\/# sourceMappingURL=.*/, '//# sourceMappingURL=https://gateway.ipfs.io/ipfs/' + filelist[file + '.map'].hash)
+              fs.writeFileSync(file, contents)
+              let result = await this.ipfs.add(contents)
+              for await (const f of result) {
+                filelist[file].hash = f.cid.toString()
+                filelist[file].size = f.size
               }
-            };
+            }
           }
+        }
+
+        if (!process.env.IPFS_WEBPACK_NO_BROTLI) {
           for (const file in filelist) {
-            if (file.endsWith('.js')) {
-               let contents = fs.readFileSync(file).toString('utf8')
-               if (filelist[file + '.map']) {
-                  console.log('rewriting source map url in ' + file + ' to be IPFS ' + filelist[file + '.map'].hash)
-                  
-                  contents = contents.replace(/\/\/# sourceMappingURL=.*/, '//# sourceMappingURL=https://gateway.ipfs.io/ipfs/' + filelist[file + '.map'].hash)
-                  fs.writeFileSync(file, contents)
+            if (file.endsWith('.js') || file.endsWith('.svg') || file.endsWith('.css')) {
+              try {
+                let contents = fs.readFileSync(file)
+                if (filelist[file].size > 4000) {
+                  contents = zlib.brotliCompressSync(contents)
                   let result = await this.ipfs.add(contents)
+                  fs.writeFileSync(file + '.br', contents)
                   for await (const f of result) {
-                     filelist[file].hash = f.cid.toString()
-                     filelist[file].size = f.size
+                    filelist[file + '.br'] = { path: file + '.br', hash: f.cid.toString(), size: f.size }
+                    console.log('brotli compressed ' + file + ' before ' + filelist[file].size + ' after ' + contents.length)
                   }
-               }
+                }
+              } catch (err) {
+                // probably a directory
+              }
             }
           }
-          
-          if (!process.env.IPFS_WEBPACK_NO_BROTLI) {
-            for (const file in filelist) {
-              if (file.endsWith('.js') || file.endsWith('.svg') || file.endsWith('.css')) {
-                 try { 
-                   let contents = fs.readFileSync(file)
-                   if (filelist[file].size > 4000) {
-                      contents = zlib.brotliCompressSync(contents)
-                      let result = await this.ipfs.add(contents)
-                      fs.writeFileSync(file + '.br', contents)
-                      for await (const f of result) {
-                        filelist[file + '.br'] = {path: file + '.br', hash: f.cid.toString(), size: f.size}
-                        console.log('brotli compressed ' + file + ' before ' + filelist[file].size + ' after ' + contents.length)
-                      }
-                   }
-                  } catch (err) {
-                    // probably a directory
-                 }
-              }          
+        }
+
+        if (!process.env.IPFS_WEBPACK_NO_INDEX) {
+          if (fs.existsSync(`${appDirectory}/` + this.source_dir + `/manifest.json`)) {
+            let r = JSON.parse(fs.readFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`))
+            if (r.start_url.startsWith('/index.html') && !r.start_url.endsWith('.br')) {
+              r.start_url = r.start_url + '.br'
+              let d = Buffer.from(JSON.stringify(r), 'utf8')
+              fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`, d)
+              let result = this.ipfs.add(d)
+              console.log(filelist)
+              for await (const f of result) {
+                filelist[this.source_dir + '/manifest.json'].hash = f.cid.toString()
+                filelist[this.source_dir + '/manifest.json'].size = f.size
+              }
+              console.log('Rewrote manifest.json')
             }
           }
-          
-          if (!process.env.IPFS_WEBPACK_NO_INDEX) {
-            if (fs.existsSync(`${appDirectory}/` + this.source_dir + `/manifest.json`)) {
-               let r = JSON.parse(fs.readFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`))
-               if (r.start_url.startsWith('/index.html') && !r.start_url.endsWith('.br')) {
-                  r.start_url = r.start_url + '.br'
-                  let d = Buffer.from(JSON.stringify(r), 'utf8')
-                  fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`, d)
-                  let result = this.ipfs.add(d)
-                  console.log(filelist)
-                  for await (const f of result) {
-                    filelist[this.source_dir + '/manifest.json'].hash = f.cid.toString()
-                    filelist[this.source_dir + '/manifest.json'].size = f.size
-                  }
-                  console.log('Rewrote manifest.json')
-               }
-            }
-            
-          
-            var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
-            const $ = cheerio.load(html, {xmlMode: false});
-            const jsRootHash = filelist[this.source_dir].hash;
+
+
+          var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
+          const $ = cheerio.load(html, { xmlMode: false });
+          const jsRootHash = filelist[this.source_dir].hash;
+          $("body").prepend(`<script>
+            window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `;
+            window.ipfsWebpackSourceDir = ` + JSON.stringify(this.source_dir) + `;
+            </script>`)
+
+          if (!process.env.IPFS_WEBPACK_FIRST_SCRIPTS_HTTP) {
             var scriptsEle = $("script[src^='/']")
             var scripts = []
-            
+
             for (var i = 0; i < scriptsEle.length; i++) {
               scripts.push(scriptsEle[i].attribs['src'])
             }
             scriptsEle.remove()
-              $("body").prepend(`<script>
-              window.ipfsWebpackFiles = ` + JSON.stringify(filelist) + `;
-              window.ipfsWebpackSourceDir = ` + JSON.stringify(this.source_dir) + `;
-              </script>`)
-              var cssEle = $("link[rel=stylesheet]");
-              var css = []
-              for (var i = 0; i < cssEle.length; i++) {
-                css.push(cssEle[i].attribs['href'])
-              } 
-              $("body").append(`<script>
-              var css = ` + JSON.stringify(css) + `;
-              
-              (async (css) => {
-                for (var i = 0; i < css.length; i++) {
-                  var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
-                  var brotli = false
-                  if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br']) {
-                     brotli = true
-                     hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
-                  }
-
-                 console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
-                 
-                 let content = await window.ipfs_fetch(hash, brotli)
-                 let contentString = content.toString();
-                 // get all fonts paths that are present inside the css file
-                 const fonts = await Object.keys(window.ipfsWebpackFiles)
-                   .filter(
-                     path =>
-                       path.includes(".woff2") ||
-                       path.includes(".woff") ||
-                       path.includes(".eot") ||
-                       path.includes(".ttf") ||
-                       path.includes(".otf")
-                   )
-                   .filter(path => {
-                     const assetPath = path.replace(window.ipfsWebpackSourceDir + '/', "/");
-                     const p = "url(" + assetPath + ")";
-                     return contentString.includes(p);
-                   })
-                   .reduce(async (acc, path) => {
-                     const asset = window.ipfsWebpackFiles[path];
-                     console.log('[ipfs-webpack-plugin] grabbing ' + path + ' from ' + asset.hash)
-                     const assetContent = await window.ipfs_fetch(asset.hash, false);
-                     console.log('[ipfs-webpack-plugin] grabbed ' + path + ' from ' + asset.hash)
-                 
-                     const assetPath = asset.path.replace(window.ipfsWebpackSourceDir + '/', "/");
-                     const trueType = assetPath.split(".").pop();
-                     return { ...(await acc), [assetPath]: { assetContent, trueType } };
-                   }, {});
-                 if (Object.entries(fonts).length !== 0 && fonts.constructor === Object) {
-                   Object.keys(fonts).forEach(fontPath => {
-                     const trueType = fonts[fontPath].trueType;
-                     const fontContent =
-                       "data:font/" +
-                       trueType +
-                       ";charset=utf-8;base64," +
-                       fonts[fontPath].assetContent.toString("base64");
-                     const reg = new RegExp(fontPath, 'g');
-                     contentString = contentString.replace(reg, fontContent);
-                   });
-                 }
-                 console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
-                 var linkTag = document.createElement('link');
-                 linkTag.type = 'text/css';
-                 linkTag.rel = 'stylesheet';
-                 linkTag.href = 'data:text/css;base64,' + btoa(contentString)
-                 document.head.appendChild(linkTag);
-              }
-            })(css).then(() => {
-            }).catch((err) => {
-               console.log('failed to load css from ipfs: ', err)
-            })
-            </script>`);
-            cssEle.remove()
-            
-            $("body").append(`<script>
-            var scripts = ` + JSON.stringify(scripts) + `;
-            
-            (async (scripts) => {
-              for (var i = 0; i < scripts.length; i++) {
-                 var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
-                 var brotli = false
-                 if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br']) {
-                    brotli = true
-                    hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br'].hash
-                 }
-
-                 console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
-                 
-                 let content = await window.ipfs_fetch(hash, brotli)
-
-                 console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
-                 var newscript = document.createElement('script')
-                 newscript.text = content.toString('utf8')
-                 document.body.appendChild(newscript)
-              }
-            })(scripts).then(() => {
-            }).catch((err) => {
-               console.log('failed to load scripts from ipfs', err)
-            })
-            </script>`);
-            
-            if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
-              let getter = await this.getGetter()
-              $("body").prepend(`<script>${getter}</script>`);
+            var cssEle = $("link[rel=stylesheet]");
+            var css = []
+            for (var i = 0; i < cssEle.length; i++) {
+              css.push(cssEle[i].attribs['href'])
             }
-          
-            html = $.html()
-            fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, html);
-            fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html.br`, zlib.brotliCompressSync(Buffer.from(html, 'utf8')))
-          }       
-            
-          result = await this.ipfs.add(
-            globSource(this.source_dir,
+            $("body").append(`<script>
+                var css = ` + JSON.stringify(css) + `;
+                
+                (async (css) => {
+                  for (var i = 0; i < css.length; i++) {
+                    var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
+                    var brotli = false
+                    if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br']) {
+                       brotli = true
+                       hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
+                    }
+  
+                   console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
+                   
+                   let content = await window.ipfs_fetch(hash, brotli)
+                   let contentString = content.toString();
+                   // get all fonts paths that are present inside the css file
+                   const fonts = await Object.keys(window.ipfsWebpackFiles)
+                     .filter(
+                       path =>
+                         path.includes(".woff2") ||
+                         path.includes(".woff") ||
+                         path.includes(".eot") ||
+                         path.includes(".ttf") ||
+                         path.includes(".otf")
+                     )
+                     .filter(path => {
+                       const assetPath = path.replace(window.ipfsWebpackSourceDir + '/', "/");
+                       const p = "url(" + assetPath + ")";
+                       return contentString.includes(p);
+                     })
+                     .reduce(async (acc, path) => {
+                       const asset = window.ipfsWebpackFiles[path];
+                       console.log('[ipfs-webpack-plugin] grabbing ' + path + ' from ' + asset.hash)
+                       const assetContent = await window.ipfs_fetch(asset.hash, false);
+                       console.log('[ipfs-webpack-plugin] grabbed ' + path + ' from ' + asset.hash)
+                   
+                       const assetPath = asset.path.replace(window.ipfsWebpackSourceDir + '/', "/");
+                       const trueType = assetPath.split(".").pop();
+                       return { ...(await acc), [assetPath]: { assetContent, trueType } };
+                     }, {});
+                   if (Object.entries(fonts).length !== 0 && fonts.constructor === Object) {
+                     Object.keys(fonts).forEach(fontPath => {
+                       const trueType = fonts[fontPath].trueType;
+                       const fontContent =
+                         "data:font/" +
+                         trueType +
+                         ";charset=utf-8;base64," +
+                         fonts[fontPath].assetContent.toString("base64");
+                       const reg = new RegExp(fontPath, 'g');
+                       contentString = contentString.replace(reg, fontContent);
+                     });
+                   }
+                   console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
+                   var linkTag = document.createElement('link');
+                   linkTag.type = 'text/css';
+                   linkTag.rel = 'stylesheet';
+                   linkTag.href = 'data:text/css;base64,' + btoa(contentString)
+                   document.head.appendChild(linkTag);
+                }
+              })(css).then(() => {
+              }).catch((err) => {
+                 console.log('failed to load css from ipfs: ', err)
+              })
+              </script>`);
+            cssEle.remove()
+
+            $("body").append(`<script>
+              var scripts = ` + JSON.stringify(scripts) + `;
+              
+              (async (scripts) => {
+                for (var i = 0; i < scripts.length; i++) {
+                   var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
+                   var brotli = false
+                   if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br']) {
+                      brotli = true
+                      hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br'].hash
+                   }
+  
+                   console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
+                   
+                   let content = await window.ipfs_fetch(hash, brotli)
+  
+                   console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
+                   var newscript = document.createElement('script')
+                   newscript.text = content.toString('utf8')
+                   document.body.appendChild(newscript)
+                }
+              })(scripts).then(() => {
+              }).catch((err) => {
+                 console.log('failed to load scripts from ipfs', err)
+              })
+              </script>`);
+          }
+          if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
+            let getter = await this.getGetter()
+            $("body").prepend(`<script>${getter}</script>`);
+          }
+
+          html = $.html()
+          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, html);
+          fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html.br`, zlib.brotliCompressSync(Buffer.from(html, 'utf8')))
+        }
+
+        result = await this.ipfs.add(
+          globSource(this.source_dir,
             {
               recursive: true,
               wrapWithDirectory: false
             }))
-            var filelist
-            for await (const file of result) {
-              filelist = {
-                ...filelist,
-                [file.path]: {
-                  path: file.path,
-                  hash: file.cid.toString(),
-                  size: file.size
-                }
-              };
+        var filelist
+        for await (const file of result) {
+          filelist = {
+            ...filelist,
+            [file.path]: {
+              path: file.path,
+              hash: file.cid.toString(),
+              size: file.size
             }
-            fs.writeFileSync(
-              `${appDirectory}/` + this.ipfs_filelist,
-              JSON.stringify(filelist)
-            );          
-            console.log('IPFS CID: ' + filelist[this.source_dir].hash) 
-            await this.ipfs.stop()
-            callback();
+          };
+        }
+        fs.writeFileSync(
+          `${appDirectory}/` + this.ipfs_filelist,
+          JSON.stringify(filelist)
+        );
+        console.log('IPFS CID: ' + filelist[this.source_dir].hash)
+        await this.ipfs.stop()
+        callback();
       }).catch((err) => {
         console.log(err)
       })
