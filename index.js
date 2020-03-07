@@ -184,7 +184,7 @@ class IpfsPlugin {
       publicPath += "/";
     }
     compiler.hooks.afterEmit.tapAsync("IpfsPlugin", (compilation, callback) => {
-      if (!fs.existsSync(this._source_dir)) {
+      if (!fs.existsSync(this.source_dir)) {
         console.log('[ipfs] no source dir exists, skipping')
         return
       }
