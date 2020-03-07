@@ -22,12 +22,12 @@ module.exports = class PolyfillIPFSScriptSrc {
                     if (__webpack_require__.nc) {
                       script.setAttribute("nonce", __webpack_require__.nc);
                     }
-                    if (window.ipfsWebpackFiles['build' + src]) {
-                      var hash = window.ipfsWebpackFiles['build' + src].hash
+                    if (window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src]) {
+                      var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src].hash
                       var brotli = false
-                      if (window.brotli_decompress && window.ipfsWebpackFiles['build' + src + '.br']) {
+                      if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src + '.br']) {
                         brotli = true
-                        hash = window.ipfsWebpackFiles['build' + src + '.br'].hash
+                        hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src + '.br'].hash
                       }
                       console.log('[chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                       var link = document.createElement('script');
@@ -54,12 +54,12 @@ module.exports = class PolyfillIPFSScriptSrc {
                   source = source.replace(
                     /script.onerror = script.onload = onScriptComplete/g,
                     `(function(element, src, onScriptComplete) {
-                        if (window.ipfsWebpackFiles['build' + src]) {
-                          var hash = window.ipfsWebpackFiles['build' + src].hash
+                        if (window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src]) {
+                          var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src].hash
                           var brotli = false
-                          if (window.brotli_decompress && window.ipfsWebpackFiles['build' + src + '.br']) {
+                          if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src + '.br']) {
                             brotli = true
-                            hash = window.ipfsWebpackFiles['build' + src + '.br'].hash
+                            hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src + '.br'].hash
                           }
                           console.log('[chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                           var newscript = element.cloneNode()
@@ -102,12 +102,12 @@ module.exports = class PolyfillIPFSScriptSrc {
                   source = source.replace(
                     /head.appendChild\(linkTag\)/g,
                     `(function(head, linkTag, src) {
-                        if (window.ipfsWebpackFiles['build' + src]) {
-                          var hash = window.ipfsWebpackFiles['build' + src].hash
+                        if (window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src]) {
+                          var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src].hash
                           var brotli = false
-                          if (window.brotli_decompress && window.ipfsWebpackFiles['build' + src + '.br']) {
+                          if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src + '.br']) {
                             brotli = true
-                            hash = window.ipfsWebpackFiles['build' + src + '.br'].hash
+                            hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + src + '.br'].hash
                           }
                           console.log('[css-chunk] ipfs loading ' + src + ' as hash ' + hash + ' brotli: ' + brotli)
                           
