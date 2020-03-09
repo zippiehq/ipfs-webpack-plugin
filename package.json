@@ -40,9 +40,13 @@
     "node-fetch": "^2.6.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.8.7",
+    "@babel/preset-env": "^7.8.7",
+    "babel-loader": "^8.0.6",
     "brotli-webpack-plugin": "^1.1.0",
     "core-js": "^3.6.4",
     "regenerator-runtime": "^0.13.3",
-    "webpack": "^4.39.3"
+    "webpack": "^4.39.3",
+    "webpack-cli": "^3.3.11"
   }
 }
