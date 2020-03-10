@@ -27,7 +27,7 @@ module.exports = {
   optimization: {
     minimize: true,
     minimizer: [
-      new TerserPlugin({})
+      new TerserPlugin({sourceMap: true})
     ],
   },
   plugins: [new BrotliPlugin({
