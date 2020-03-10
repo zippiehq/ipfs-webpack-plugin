@@ -1,8 +1,10 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
+const Buffer = require('buffer/').Buffer 
 import IpfsBridgeClient from "@zippie/ipfs-bridge/src/client";
 import { BrotliDecompressBuffer as decompress } from "@zippie/brotli/dec/decode";
+
 
 window.brotli_decompress = function (content) {
   return Buffer.from(decompress(content))
