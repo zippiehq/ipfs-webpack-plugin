@@ -122,11 +122,13 @@ class IpfsPlugin {
          function ipfs_stub_message_callback(event) {
             if (event.data.result.contents) {
                window.removeEventListener('message', ipfs_stub_message_callback)
-               window.eval(event.data.result.contents) // load the stub
-               console.log('[ipfs stub loaded]')
-               for (var i = 0; i < window.ipfs_ready_waiting.length; i++) {
-                  window.ipfs_ready_waiting[i]()
+               window.ipfs_stub_callback = function () {
+                  console.log('[ipfs stub loaded]')
+                  for (var i = 0; i < window.ipfs_ready_waiting.length; i++) {
+                    window.ipfs_ready_waiting[i]()
+                  }
                }
+               window.eval(event.data.result.contents) // load the stub
              }
              
          }      

@@ -33,5 +33,6 @@ if (!window.ipfs) {
     }
     
     window.ipfs_stub_loaded = true
+    window.ipfs_stub_callback()
   })
 }
