@@ -132,9 +132,6 @@ class IpfsPlugin {
              }
              
          }      
-         window.addEventListener('message', ipfs_stub_message_callback)
-         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmaDq9NjtLeKxmLyXJ9SmB899wBkJtAQtxDaPdM9a8Mhqv/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
-         
          window.ipfs_ready = function() {
             return new Promise((resolve, reject) => {
                if (window.ipfs_stub_loaded) {
@@ -149,6 +146,10 @@ class IpfsPlugin {
             await window.ipfs_ready()
             return await window.ipfs_fetch(cid, brotli)
          }
+         
+         window.addEventListener('message', ipfs_stub_message_callback)
+         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmdDE5T1rtpnAWkmFbAmPBUgSUEALYe9K3Hthf4UPL1Egq/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
+         
     `
     }
     fs.writeFileSync(`${appDirectory}/ipfsGetter.js`, code);
@@ -294,6 +295,9 @@ class IpfsPlugin {
                 var css = ` + JSON.stringify(css) + `;
                 
                 (async (css) => {
+                  if (window.ipfs_ready) {
+                     await window.ipfs_ready()
+                  }
                   for (var i = 0; i < css.length; i++) {
                     var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
                     var brotli = false
@@ -361,6 +365,9 @@ class IpfsPlugin {
               var scripts = ` + JSON.stringify(scripts) + `;
               
               (async (scripts) => {
+                if (window.ipfs_ready) {
+                   await window.ipfs_ready()
+                }
                 for (var i = 0; i < scripts.length; i++) {
                    var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
                    var brotli = false

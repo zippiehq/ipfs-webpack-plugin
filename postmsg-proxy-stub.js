@@ -10,6 +10,7 @@ window.brotli_decompress = function (content) {
   return Buffer.from(decompress(content))
 }
 
+
 if (!window.ipfs) {
   window.ipfs = new IpfsBridgeClient()
   window.ipfs.init().then(() => {
@@ -35,6 +36,11 @@ if (!window.ipfs) {
     }
     
     window.ipfs_stub_loaded = true
+    window.ipfs_ready = function() {
+       return new Promise((resolve, reject) => {
+          resolve()
+       })
+    }
     window.ipfs_stub_callback()
   })
 }
