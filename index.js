@@ -236,7 +236,7 @@ class IpfsPlugin {
             if (file.endsWith('.js') || file.endsWith('.svg') || file.endsWith('.css')) {
               try {
                 let contents = fs.readFileSync(file)
-                if (filelist[file].size > 4000) {
+                if (process.env.IPFS_WEBPACK_ALWAYS_BROTLI || filelist[file].size > 4000) {
                   contents = zlib.brotliCompressSync(contents)
                   let result = await this.ipfs.add(contents)
                   fs.writeFileSync(file + '.br', contents)

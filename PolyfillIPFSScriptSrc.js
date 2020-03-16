@@ -50,7 +50,6 @@ module.exports = class PolyfillIPFSScriptSrc {
               hook.tap(
                 'PolyfillIPFSScriptSrc',
                 (source, chunk, hash, moduleTemplate, dependencyTemplates) => {
-                  console.log(source)
                   source = source.replace(
                     /script.onerror = script.onload = onScriptComplete/g,
                     `(function(element, src, onScriptComplete) {
@@ -87,8 +86,6 @@ module.exports = class PolyfillIPFSScriptSrc {
                                   
                     })(script, jsonpScriptSrc(chunkId), onScriptComplete)`
                   )
-                  console.log('after: ')
-                  console.log(source)
                   return source
                 }
               )
@@ -98,7 +95,6 @@ module.exports = class PolyfillIPFSScriptSrc {
 
             const wrap2 = hook => {
                hook.tap('PolyfillIPFSScriptSrc', (source, chunk, hash, moduleTemplate, dependencyTemplates) => {
-                  console.log('got into requireEnsure, before source:' + source)
                   source = source.replace(
                     /head.appendChild\(linkTag\)/g,
                     `(function(head, linkTag, src) {
@@ -168,9 +164,6 @@ module.exports = class PolyfillIPFSScriptSrc {
                           head.appendChild(linkTag);
                         }
                     })(head, linkTag, fullhref)`)
-                    
-                    console.log('after ' + source)
-
                     
                   return source
                })
