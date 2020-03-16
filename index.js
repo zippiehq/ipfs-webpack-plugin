@@ -233,7 +233,7 @@ class IpfsPlugin {
 
         if (!process.env.IPFS_WEBPACK_NO_BROTLI) {
           for (const file in filelist) {
-            if (file.endsWith('.js') || file.endsWith('.svg') || file.endsWith('.css')) {
+            if (process.env.IPFS_WEBPACK_ALWAYS_BROTLI || file.endsWith('.js') || file.endsWith('.svg') || file.endsWith('.css')) {
               try {
                 let contents = fs.readFileSync(file)
                 if (process.env.IPFS_WEBPACK_ALWAYS_BROTLI || filelist[file].size > 4000) {
