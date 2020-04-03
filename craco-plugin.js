@@ -17,7 +17,7 @@ module.exports = {
       return cracoConfig
     },
     overrideWebpackConfig: ({ webpackConfig, cracoConfig, pluginOptions, context: { env, paths } }) => {
-      if (process.env.IPFS_WEBPACK_DISABLE && process.env.IPFS_WEBPACK_DISABLE === '1') {
+      if (!(process.env.IPFS_WEBPACK_DISABLE && process.env.IPFS_WEBPACK_DISABLE === '1')) {
          webpackConfig.plugins.unshift(new PolyfillIPFSScriptSrc())
          webpackConfig.plugins.push(new IpfsWebpackPlugin())
       }
