@@ -4,7 +4,8 @@ const IPFS = require('ipfs')
 const dotenv = require('dotenv')
 const zutils = require('@zippie/zippie-utils')
 const fs = require('fs')
-
+const Web3 = require('web3')
+const zippieWeb3Ens = require('@zippie/zippie-web3-utils').ens
 const FormData = require('form-data');
 
 dotenv.config()
@@ -90,11 +91,29 @@ async function run() {
         }
       }
 
+      if (process.env.IPFS_WEBPACK_WEB3_NODE && process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY) {
+         let web3 = new Web3(process.env.IPFS_WEBPACK_WEB3_NODE)
+        
+         let account = web3.eth.accounts.wallet.add('0x' + process.env.IPFS_WEBPACK_ZIPPIE_PERMASTORE2_PRIVKEY)
+         console.log(account)         
+         console.log('Updating contentHash using ' + account.address + ' on ' + process.env.IPFS_WEBPACK_WEB3_NODE + ' registry ' + process.env.IPFS_WEBPACK_ENS_REGISTRY + ' name ' + process.env.IPFS_WEBPACK_ENS_NAME + 
+            ' to ' +  filelist[source_dir].hash)
+         try { 
+           await zippieWeb3Ens.setContenthash(web3, process.env.IPFS_WEBPACK_ENS_REGISTRY, account.address, process.env.IPFS_WEBPACK_ENS_NAME, "ipfs-ns", filelist[source_dir].hash)
+         } catch (err) {
+           // we assume there's no resolver
+           await zippieWeb3Ens.fifsRegister(web3, process.env.IPFS_WEBPACK_ENS_REGISTRAR, account.address, process.env.IPFS_WEBPACK_ENS_NAME)
+           await zippieWeb3Ens.setResolver(web3,  process.env.IPFS_WEBPACK_ENS_REGISTRY, account.address, process.env.IPFS_WEBPACK_ENS_NAME, process.env.IPFS_WEBPACK_ENS_RESOLVER)
+           // and now try again
+           await zippieWeb3Ens.setContenthash(web3, process.env.IPFS_WEBPACK_ENS_REGISTRY, account.address, process.env.IPFS_WEBPACK_ENS_NAME, "ipfs-ns", filelist[source_dir].hash)
+         }
+      }
       if (process.env.IPFS_WEBPACK_ONLINE) {
         console.log('Stopping IPFS node... ')
         await ipfs.stop()
       }
     }
+    
   })
 }
 

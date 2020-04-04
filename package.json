@@ -1,6 +1,6 @@
 {
   "name": "@zippie/ipfs-webpack-plugin",
-  "version": "1.1.78",
+  "version": "1.1.80",
   "description": "ipfs webpack plugin ",
   "main": "index.js",
   "scripts": {
@@ -26,6 +26,7 @@
     "@zippie/ipfs-bitswap": "^0.27.1",
     "@zippie/ipfs-bridge": "^0.1.5",
     "@zippie/zippie-utils": "^0.6.14",
+    "@zippie/zippie-web3-utils": "0.0.25",
     "axios": "^0.19.2",
     "base64-inline-loader": "^1.1.1",
     "buffer": "^5.5.0",
@@ -38,7 +39,8 @@
     "level-mem": "^5.0.1",
     "multihashes": "^0.4.15",
     "multihashing-async": "^0.8.0",
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.6.0",
+    "web3": "^1.2.6"
   },
   "devDependencies": {
     "@babel/core": "^7.8.7",
