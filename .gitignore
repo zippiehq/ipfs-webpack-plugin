@@ -1,3 +1,6 @@
 .ipfs-webpack-plugin
 build
 /node_modules
+*~
+.env*
+build-ipfs-filelist.json
