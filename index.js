@@ -146,7 +146,7 @@ class IpfsPlugin {
             await window.ipfs_ready()
             return await window.ipfs_fetch(cid, brotli)
          }
-         
+
          window.addEventListener('message', ipfs_stub_message_callback)
          window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/Qmd8PgAqSzhj2EzyKV6qcCrvA1UE1MVEEuRs591uu1RAd8/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
          
@@ -291,6 +291,8 @@ class IpfsPlugin {
             for (var i = 0; i < cssEle.length; i++) {
               css.push(cssEle[i].attribs['href'])
             }
+            
+                        
             $("body").append(`<script>
                 var css = ` + JSON.stringify(css) + `;
                 
@@ -298,6 +300,8 @@ class IpfsPlugin {
                   if (window.ipfs_ready) {
                      await window.ipfs_ready()
                   }
+
+                  var css_promises = []
                   for (var i = 0; i < css.length; i++) {
                     var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
                     var brotli = false
@@ -305,13 +309,21 @@ class IpfsPlugin {
                        brotli = true
                        hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
                     }
-  
-                   console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
-                   
-                   let content = await window.ipfs_fetch(hash, brotli)
-                   let contentString = content.toString();
-                   // get all fonts paths that are present inside the css file
-                   const fonts = await Object.keys(window.ipfsWebpackFiles)
+                    
+                    console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
+                    let promise = window.ipfs_fetch(hash, brotli)
+                    css_promises.push(promise)
+                    promise.then(() => {
+                      console.log('[ipfs-webpack-plugin] grabbed ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
+                    })
+                  }
+
+                  for (var i = 0; i < css.length; i++) {
+                    let content = await css_promises[i]
+                    console.log('[ipfs-webpack-plugin] loading css ' + css[i])
+                    let contentString = content.toString();
+                    // get all fonts paths that are present inside the css file
+                    const fonts = await Object.keys(window.ipfsWebpackFiles)
                      .filter(
                        path =>
                          path.includes(".woff2") ||
@@ -347,7 +359,7 @@ class IpfsPlugin {
                        contentString = contentString.replace(reg, fontContent);
                      });
                    }
-                   console.log('[ipfs-webpack-plugin] downloaded ' + css[i] + ' brotli: ' + brotli)
+                   console.log('[ipfs-webpack-plugin] loading ' + css[i])
                    var linkTag = document.createElement('link');
                    linkTag.type = 'text/css';
                    linkTag.rel = 'stylesheet';
@@ -368,6 +380,7 @@ class IpfsPlugin {
                 if (window.ipfs_ready) {
                    await window.ipfs_ready()
                 }
+                var script_promises = []
                 for (var i = 0; i < scripts.length; i++) {
                    var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
                    var brotli = false
@@ -377,10 +390,15 @@ class IpfsPlugin {
                    }
   
                    console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
-                   
-                   let content = await window.ipfs_fetch(hash, brotli)
-  
-                   console.log('[ipfs-webpack-plugin] downloaded ' + scripts[i] + ' brotli: ' + brotli)
+                   let promise = window.ipfs_fetch(hash, brotli)
+                   script_promises.push(promise)
+                   promise.then(() => {
+                     console.log('[ipfs-webpack-plugin] grabbed ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
+                   })
+                }
+                for (var i = 0; i < scripts.length; i++) {
+                   let content = await script_promises[i]
+                   console.log('[ipfs-webpack-plugin] loading ' + scripts[i] + ' brotli: ' + brotli)
                    var newscript = document.createElement('script')
                    newscript.text = content.toString('utf8')
                    document.body.appendChild(newscript)
