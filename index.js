@@ -292,122 +292,171 @@ class IpfsPlugin {
               css.push(cssEle[i].attribs['href'])
             }
             
-                        
+            var download_assets = []
+
+            for (var i = 0; i < css.length; i++) {
+                var hash = filelist[this.source_dir + css[i]].hash
+                var brotli_hash = undefined
+
+                if (filelist[this.source_dir + css[i] + '.br']) {
+                  brotli_hash = filelist[this.source_dir + css[i] + '.br']
+                }
+
+                download_assets.push({
+                  filename: this.source_dir + css[i],
+                  hash: hash,
+                  brotli_hash: brotli_hash,
+                  type: 'css'
+                })
+
+            }
+            for (var i = 0; i < scripts.length; i++) {
+              var hash = filelist[this.source_dir + scripts[i]].hash
+              var brotli_hash = undefined
+
+              if (filelist[this.source_dir + scripts[i] + '.br']) {
+                brotli_hash = filelist[this.source_dir + scripts[i] + '.br'].hash
+              }
+
+              download_assets.push({
+                filename: this.source_dir + scripts[i],
+                hash: hash,
+                brotli_hash: brotli_hash,
+                type: 'script'
+              })
+            }
+
+            let allFonts = []
+            for (var i = 0; i < css.length; i++) {
+              const contentString = fs.readFileSync(this.source_dir + css[i]).toString('utf8')
+
+              // get all fonts paths that are present inside the css file
+              const fonts = await Object.keys(filelist)
+                .filter(
+                  path =>
+                    path.includes(".woff2") ||
+                    path.includes(".woff") ||
+                    path.includes(".eot") ||
+                    path.includes(".ttf") ||
+                    path.includes(".otf")
+                )
+                .filter(path => {
+                  const assetPath = path.replace(this.source_dir + '/', "/");
+                  const p = "url(" + assetPath + ")";
+                  return contentString.includes(p);
+                })
+              for (var j = 0; j < fonts.length; j++) {
+                if (!allFonts.includes(fonts[j])) {
+                  allFonts.push(fonts[j])
+                  var hash = filelist[fonts[j]].hash
+
+                  download_assets.push({
+                   filename: fonts[j],
+                   hash: hash,
+                   type: 'font'
+                  })  
+                }
+              }
+            }
+
             $("body").append(`<script>
-                var css = ` + JSON.stringify(css) + `;
+            (async () => {
+              if (window.ipfs_ready) {
+                await window.ipfs_ready()
+              }
+              var download_assets = ` + JSON.stringify(download_assets) + `;
+              for (let i = 0; i < download_assets.length; i++) {
+                let hash = download_assets[i].hash
+                let brotli = false
+                if (window.brotli_decompress && download_assets[i].brotli_hash) {
+                   brotli = true
+                   hash = download_assets[i].brotli_hash
+                }
                 
-                (async (css) => {
-                  if (window.ipfs_ready) {
-                     await window.ipfs_ready()
-                  }
+                console.log('[ipfs-webpack-plugin] grabbing ' + download_assets[i].filename + ' from ' + hash + ' brotli: ' + brotli)
+                let promise = window.ipfs_fetch(hash, brotli)
+                download_assets[i].promise = promise
+                promise.then(() => {
+                  console.log('[ipfs-webpack-plugin] grabbed ' + download_assets[i].filename + ' from ' + hash + ' brotli: ' + brotli)
+                })
+              }  
 
-                  var css_promises = []
-                  for (var i = 0; i < css.length; i++) {
-                    var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i]].hash
-                    var brotli = false
-                    if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br']) {
-                       brotli = true
-                       hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + css[i] + '.br'].hash
-                    }
-                    
-                    console.log('[ipfs-webpack-plugin] grabbing ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
-                    let promise = window.ipfs_fetch(hash, brotli)
-                    css_promises.push(promise)
-                    promise.then(() => {
-                      console.log('[ipfs-webpack-plugin] grabbed ' + css[i] + ' from ' + hash + ' brotli: ' + brotli)
-                    })
-                  }
+              for (var i = 0; i < download_assets.length; i++) {
+                if (download_assets[i].type !== 'css')
+                  continue
 
-                  for (var i = 0; i < css.length; i++) {
-                    let content = await css_promises[i]
-                    console.log('[ipfs-webpack-plugin] loading css ' + css[i])
-                    let contentString = content.toString();
-                    // get all fonts paths that are present inside the css file
-                    const fonts = await Object.keys(window.ipfsWebpackFiles)
-                     .filter(
-                       path =>
-                         path.includes(".woff2") ||
-                         path.includes(".woff") ||
-                         path.includes(".eot") ||
-                         path.includes(".ttf") ||
-                         path.includes(".otf")
-                     )
-                     .filter(path => {
-                       const assetPath = path.replace(window.ipfsWebpackSourceDir + '/', "/");
-                       const p = "url(" + assetPath + ")";
-                       return contentString.includes(p);
-                     })
-                     .reduce(async (acc, path) => {
-                       const asset = window.ipfsWebpackFiles[path];
-                       console.log('[ipfs-webpack-plugin] grabbing ' + path + ' from ' + asset.hash)
-                       const assetContent = await window.ipfs_fetch(asset.hash, false);
-                       console.log('[ipfs-webpack-plugin] grabbed ' + path + ' from ' + asset.hash)
-                   
-                       const assetPath = asset.path.replace(window.ipfsWebpackSourceDir + '/', "/");
-                       const trueType = assetPath.split(".").pop();
-                       return { ...(await acc), [assetPath]: { assetContent, trueType } };
-                     }, {});
-                   if (Object.entries(fonts).length !== 0 && fonts.constructor === Object) {
-                     Object.keys(fonts).forEach(fontPath => {
-                       const trueType = fonts[fontPath].trueType;
-                       const fontContent =
-                         "data:font/" +
-                         trueType +
-                         ";charset=utf-8;base64," +
-                         fonts[fontPath].assetContent.toString("base64");
-                       const reg = new RegExp(fontPath, 'g');
-                       contentString = contentString.replace(reg, fontContent);
-                     });
+                let content = await download_assets[i].promise
+                console.log('[ipfs-webpack-plugin] loading css ' + download_assets[i].filename)
+                let contentString = content.toString();
+                // get all fonts paths that are present inside the css file
+
+                const fonts = await Object.keys(window.ipfsWebpackFiles)
+                 .filter(
+                   path =>
+                     path.includes(".woff2") ||
+                     path.includes(".woff") ||
+                     path.includes(".eot") ||
+                     path.includes(".ttf") ||
+                     path.includes(".otf")
+                 )
+                 .filter(path => {
+                   const assetPath = path.replace(window.ipfsWebpackSourceDir + '/', "/");
+                   const p = "url(" + assetPath + ")";
+                   return contentString.includes(p);
+                 })
+                 .reduce(async (acc, path) => {
+                   for (var i = 0; i < download_assets.length; i++) {
+                     if (download_assets[i].type !== 'font' || download_assets[i].filename !== path)
+                       continue
+
+                     const asset = download_assets[i]
+                     console.log('[ipfs-webpack-plugin] font-loading ' + path + ' from ' + asset.hash)
+                     const assetContent = await download_assets[i].promise;
+                     console.log('[ipfs-webpack-plugin] font-loaded ' + path + ' from ' + asset.hash)
+                 
+                     const assetPath = asset.filename.replace(window.ipfsWebpackSourceDir + '/', "/");
+                     const trueType = assetPath.split(".").pop();
+                     return { ...(await acc), [assetPath]: { assetContent, trueType } };
                    }
-                   console.log('[ipfs-webpack-plugin] loading ' + css[i])
-                   var linkTag = document.createElement('link');
-                   linkTag.type = 'text/css';
-                   linkTag.rel = 'stylesheet';
-                   linkTag.href = 'data:text/css;base64,' + btoa(contentString)
-                   document.head.appendChild(linkTag);
-                }
-              })(css).then(() => {
-              }).catch((err) => {
-                 console.log('failed to load css from ipfs: ', err)
-              })
-              </script>`);
+                 }, {});
+               if (Object.entries(fonts).length !== 0 && fonts.constructor === Object) {
+                 Object.keys(fonts).forEach(fontPath => {
+                   const trueType = fonts[fontPath].trueType;
+                   const fontContent =
+                     "data:font/" +
+                     trueType +
+                     ";charset=utf-8;base64," +
+                     fonts[fontPath].assetContent.toString("base64");
+                   const reg = new RegExp(fontPath, 'g');
+                   contentString = contentString.replace(reg, fontContent);
+                 });
+               }
+               var linkTag = document.createElement('link');
+               linkTag.type = 'text/css';
+               linkTag.rel = 'stylesheet';
+               linkTag.href = 'data:text/css;base64,' + btoa(contentString)
+               document.head.appendChild(linkTag);
+               console.log('[ipfs-webpack-plugin] loaded css ' + download_assets[i].filename)
+             } 
+
+             for (var i = 0; i < download_assets.length; i++) {
+               if (download_assets[i].type !== 'script')
+                 continue
+
+               let content = await download_assets[i].promise
+               console.log('[ipfs-webpack-plugin] loading ' + download_assets[i].filename)
+               var newscript = document.createElement('script')
+               newscript.text = content.toString('utf8')
+               document.body.appendChild(newscript)
+               console.log('[ipfs-webpack-plugin] loaded ' + download_assets[i].filename)
+             }
+            })().then(() => {
+            }).catch((err) => {
+               console.log('failed to load initial assets from ipfs: ', err)
+            });
+            </script>`)
+
             cssEle.remove()
-
-            $("body").append(`<script>
-              var scripts = ` + JSON.stringify(scripts) + `;
-              
-              (async (scripts) => {
-                if (window.ipfs_ready) {
-                   await window.ipfs_ready()
-                }
-                var script_promises = []
-                for (var i = 0; i < scripts.length; i++) {
-                   var hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i]].hash
-                   var brotli = false
-                   if (window.brotli_decompress && window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br']) {
-                      brotli = true
-                      hash = window.ipfsWebpackFiles[window.ipfsWebpackSourceDir + scripts[i] + '.br'].hash
-                   }
-  
-                   console.log('[ipfs-webpack-plugin] grabbing ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
-                   let promise = window.ipfs_fetch(hash, brotli)
-                   script_promises.push(promise)
-                   promise.then(() => {
-                     console.log('[ipfs-webpack-plugin] grabbed ' + scripts[i] + ' from ' + hash + ' brotli: ' + brotli)
-                   })
-                }
-                for (var i = 0; i < scripts.length; i++) {
-                   let content = await script_promises[i]
-                   console.log('[ipfs-webpack-plugin] loading ' + scripts[i] + ' brotli: ' + brotli)
-                   var newscript = document.createElement('script')
-                   newscript.text = content.toString('utf8')
-                   document.body.appendChild(newscript)
-                }
-              })(scripts).then(() => {
-              }).catch((err) => {
-                 console.log('failed to load scripts from ipfs', err)
-              })
-              </script>`);
           }
           if (!process.env.IPFS_WEBPACK_PLUGIN_NO_GETTER) {
             let getter = await this.getGetter()
