@@ -10,7 +10,7 @@ const FormData = require('form-data');
 
 dotenv.config()
 
-zutils.permastore.setUri(process.env.PERMASTORE_URL ? process.env.PERMASTORE_URL : 'fms.dev.zippie.com')
+zutils.permastore.setUri(process.env.PERMASTORE_URL ? process.env.PERMASTORE_URL : 'https://fms.dev.zippie.com')
 
 const source_dir = process.env.IPFS_WEBPACK_SOURCE_DIR ? process.env.IPFS_WEBPACK_SOURCE_DIR : 'build'
 const ipfs_repo = process.env.IPFS_WEBPACK_REPO ? process.env.IPFS_WEBPACK_SOURCE_DIR : '.ipfs-webpack-plugin'
