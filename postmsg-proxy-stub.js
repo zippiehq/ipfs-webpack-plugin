@@ -1,21 +1,11 @@
-import "core-js/stable";
-import "regenerator-runtime/runtime";
-
 const Buffer = require('buffer/').Buffer 
 import IpfsBridgeClient from "@zippie/ipfs-bridge/src/client";
-import { BrotliDecompressBuffer as decompress } from "@zippie/brotli/dec/decode";
-
-
-window.brotli_decompress = function (content) {
-  return Buffer.from(decompress(content))
-}
-
 
 if (!window.ipfs) {
   window.ipfs = new IpfsBridgeClient()
   window.ipfs.init().then(() => {
     console.info("Zippie IPFS bridge client ready.")
-
+    window.brotli_decompress = true
     window.ipfs_fetch = async function (cid, brotli = false) {
       const chunks = []
       for await (const chunk of window.ipfs.cat(cid)) {
@@ -24,9 +14,13 @@ if (!window.ipfs) {
       const contents = Buffer.concat(chunks)
     
       let decompressed = contents
-      if (brotli) {
+      if (brotli && window.ipfs.brotli_decompress) {
         try {
-          decompressed = Buffer.from(window.brotli_decompress(decompressed))
+          const dchunk = []
+          for await (const chunk of window.ipfs.brotli_decompress(contents)) {
+            dchunk.push(chunk)
+          }
+          decompressed = Buffer.concat(dchunk)          
           console.log('decompress ok')
         } catch (err) {
           console.log(err)
