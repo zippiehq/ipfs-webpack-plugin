@@ -1,3 +1,5 @@
+import "regenerator-runtime/runtime";
+
 const Buffer = require('buffer/').Buffer 
 import IpfsBridgeClient from "@zippie/ipfs-bridge/src/client";
 

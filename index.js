@@ -148,7 +148,7 @@ class IpfsPlugin {
          }
 
          window.addEventListener('message', ipfs_stub_message_callback)
-         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmZtSncZ1NzxP5vZUcZJuqMMPUBzd7cnXP4Yr2DtHv9V64/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
+         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmWfeeyrpec4TP77SsvSQHAo1YUrdrqMxz6WgtjQwcANR1/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
          
     `
     }
