@@ -253,21 +253,6 @@ class IpfsPlugin {
         }
 
         if (!process.env.IPFS_WEBPACK_NO_INDEX) {
-          if (fs.existsSync(`${appDirectory}/` + this.source_dir + `/manifest.json`)) {
-            let r = JSON.parse(fs.readFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`))
-            if (r.start_url.startsWith('/index.html') && !r.start_url.endsWith('.br')) {
-              r.start_url = r.start_url + '.br'
-              let d = Buffer.from(JSON.stringify(r), 'utf8')
-              fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`, d)
-              let result = this.ipfs.add(d)
-              console.log(filelist)
-              for await (const f of result) {
-                filelist[this.source_dir + '/manifest.json'].hash = f.cid.toString()
-                filelist[this.source_dir + '/manifest.json'].size = f.size
-              }
-              console.log('Rewrote manifest.json')
-            }
-          }
 
 
           var html = fs.readFileSync(`${appDirectory}/` + this.source_dir + `/index.html`);
@@ -466,6 +451,24 @@ class IpfsPlugin {
           html = $.html()
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html`, html);
           fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/index.html.br`, zlib.brotliCompressSync(Buffer.from(html, 'utf8')))
+
+          if (fs.existsSync(`${appDirectory}/` + this.source_dir + `/manifest.json`)) {
+            let r = JSON.parse(fs.readFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`))
+            if (r.start_url.startsWith('/index.html') && !r.start_url.endsWith('.br')) {
+              r.start_url = r.start_url + '.br'
+              r.download_assets = [{'filename': 'postmsg-proxy-stub.js.br', brotli_hash: 'QmWfeeyrpec4TP77SsvSQHAo1YUrdrqMxz6WgtjQwcANR1/postmsg-proxy-stub.js.br', type: 'proxy'}]
+              r.download_assets = r.download_assets.concat(download_assets)
+              let d = Buffer.from(JSON.stringify(r), 'utf8')
+              fs.writeFileSync(`${appDirectory}/` + this.source_dir + `/manifest.json`, d)
+              let result = this.ipfs.add(d)
+              console.log(filelist)
+              for await (const f of result) {
+                filelist[this.source_dir + '/manifest.json'].hash = f.cid.toString()
+                filelist[this.source_dir + '/manifest.json'].size = f.size
+              }
+              console.log('Rewrote manifest.json')
+            }
+          }
         }
 
         result = await this.ipfs.add(
