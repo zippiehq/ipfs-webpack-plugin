@@ -120,7 +120,7 @@ class IpfsPlugin {
          /* stub to load stuff */
          window.ipfs_ready_waiting = [] 
          function ipfs_stub_message_callback(event) {
-            if (event.data.result && event.data.result.contents) {
+            if (event.data.result && event.data.result.transferables) {
                window.removeEventListener('message', ipfs_stub_message_callback)
                window.ipfs_stub_callback = function () {
                   console.log('[ipfs stub loaded]')
@@ -128,7 +128,7 @@ class IpfsPlugin {
                     window.ipfs_ready_waiting[i]()
                   }
                }
-               window.eval(event.data.result.contents) // load the stub
+               window.eval(new TextDecoder().decode(event.data.result.transferables[0])) // load the stub
              }
              
          }      
@@ -148,7 +148,7 @@ class IpfsPlugin {
          }
 
          window.addEventListener('message', ipfs_stub_message_callback)
-         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmWfeeyrpec4TP77SsvSQHAo1YUrdrqMxz6WgtjQwcANR1/postmsg-proxy-stub.js.br', brotli: true }, callback: 'initial'}, '*')
+         window.parent.postMessage({'wm_ipfs_fetch': { cid: '/ipfs/QmWfeeyrpec4TP77SsvSQHAo1YUrdrqMxz6WgtjQwcANR1/postmsg-proxy-stub.js.br', brotli: true, transferable: true }, callback: 'initial'}, '*')
          
     `
     }
