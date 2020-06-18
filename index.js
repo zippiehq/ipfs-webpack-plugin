@@ -120,7 +120,7 @@ class IpfsPlugin {
          /* stub to load stuff */
          window.ipfs_ready_waiting = [] 
          function ipfs_stub_message_callback(event) {
-            if (event.data.result && event.data.result.transferables) {
+            if (event.data && event.data.result && event.data.result.transferables) {
                window.removeEventListener('message', ipfs_stub_message_callback)
                window.ipfs_stub_callback = function () {
                   console.log('[ipfs stub loaded]')
