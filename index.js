@@ -120,6 +120,7 @@ class IpfsPlugin {
          /* stub to load stuff */
          window.ipfs_ready_waiting = [] 
          function ipfs_stub_message_callback(event) {
+            console.log('got event: ', event)
             if (event.data && event.data.result && event.data.result.transferables) {
                window.removeEventListener('message', ipfs_stub_message_callback)
                window.ipfs_stub_callback = function () {
@@ -274,6 +275,9 @@ class IpfsPlugin {
             var cssEle = $("link[rel=stylesheet]");
             var css = []
             for (var i = 0; i < cssEle.length; i++) {
+              if (cssEle[i].attribs['href'].startsWith('https://'))
+                 continue
+
               css.push(cssEle[i].attribs['href'])
             }
             
