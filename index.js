@@ -288,7 +288,7 @@ class IpfsPlugin {
                 var brotli_hash = undefined
 
                 if (filelist[this.source_dir + css[i] + '.br']) {
-                  brotli_hash = filelist[this.source_dir + css[i] + '.br']
+                  brotli_hash = filelist[this.source_dir + css[i] + '.br'].hash
                 }
 
                 download_assets.push({
